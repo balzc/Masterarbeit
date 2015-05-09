@@ -34,70 +34,111 @@ public class GP {
 		trainOut = trainOutput;
 		covf = cf;
 		numTest = testIn.columns;
-		numTrain =trainIn.columns;
-		DoubleMatrix parameters = DoubleMatrix.ones(2);
+		numTrain = trainIn.columns;
+		double[] dataX = {1,1};
+		double[] dataY = {2,2};
+		double[] dataP = {1,1};
+		double nl = 0.05;
+		noiselevel = nl;
+		DoubleMatrix X = new DoubleMatrix(dataX);
+		DoubleMatrix Y = new DoubleMatrix(dataY);
+		DoubleMatrix P = new DoubleMatrix(dataP);
+//		DoubleMatrix C = computeCovMatrix(X,X, P);
+		System.out.println("Covariance");
+		System.out.println(computeCovMatrix(X, X, P));
 
-		DoubleMatrix identity = DoubleMatrix.eye(trainIn.columns);
-		trainCov = computeCovMatrix(trainIn, trainIn, parameters);
-		testTrainCov = computeCovMatrix(trainIn, testIn, parameters);
-		testCov = computeCovMatrix(testIn, testIn, parameters);
 		
-		DoubleMatrix temp = trainCov.add(identity.mul(noiselevel));
-		temp.print();
-		l = Decompose.cholesky(temp);
+		DoubleMatrix parameters = new DoubleMatrix(dataP);//DoubleMatrix.randn(2);
+		System.out.println("Parameters before");
+		parameters.print();
+		DoubleMatrix samples = generateSamples(X, parameters, 1, covf);
+		System.out.println("Samples:");
+		samples.print();
 		
-		DoubleMatrix param = minimize(parameters, -100, trainIn, trainOut);
-		System.out.println("Parameters:");
+	
+		double[] p = {10,0.1};
+		
+		DoubleMatrix param = minimize(new DoubleMatrix(p), -1000, X, samples);
+
+		System.out.println("Parameters after");
 		param.print();
+		System.out.println(negativeLogLikelihood(parameters, X, samples, P));
+		System.out.println(negativeLogLikelihood(new DoubleMatrix(p), X, samples, P));
+
 		
-		trainCov.print();
+//		
+//		
+//		DoubleMatrix beta = Solve.pinv(l).mmul(Solve.pinv(l).mmul(trainOut.transpose()));
+//		alpha = Solve.solve(l.transpose(), Solve.solve(l, trainOut.transpose()));
+//		predMean = testCov.transpose().mmul(alpha);
+//		predVar = Solve.solve(l, testCov);
+//		System.out.println("End");
+
 		
-		
-		l.print();
-		DoubleMatrix beta = Solve.pinv(l).mmul(Solve.pinv(l).mmul(trainOut.transpose()));
-		alpha = Solve.solve(l.transpose(), Solve.solve(l, trainOut.transpose()));
-		alpha.print();
-		beta.print();
-		predMean = testCov.transpose().mmul(alpha);
-		testCov.print();
-		predVar = Solve.solve(l, testCov);
-		predVar.print();
-		
-		
-		System.out.println(logLikelihood);
 	}
-	public DoubleMatrix calculateAlpha(DoubleMatrix trainInput,  DoubleMatrix trainOutput, DoubleMatrix parameters, double noiselvl){
+	public DoubleMatrix computeAlpha(DoubleMatrix trainInput,  DoubleMatrix trainOutput, DoubleMatrix parameters, double noiselvl){
 		DoubleMatrix cova = computeCovMatrix(trainInput, trainInput,parameters);
-		DoubleMatrix identity = DoubleMatrix.eye(trainInput.columns);
+		DoubleMatrix identity = DoubleMatrix.eye(trainInput.rows);
 		DoubleMatrix temp = cova.add(identity.mul(noiselvl));
 		DoubleMatrix el = Decompose.cholesky(temp);
-		DoubleMatrix beta = Solve.pinv(el).mmul(Solve.pinv(el).mmul(trainOutput.transpose()));
-		return Solve.solve(el.transpose(), Solve.solve(el, trainOutput.transpose()));
+		return Solve.solve(el.transpose(), Solve.solve(el, trainOutput));
 	}
-	public double calcuateMean(){return 0;}
-	public double calculateVariance(){return 0;}
-	public double calculateLogLikelihood(){return 0;}
+	
+	public DoubleMatrix computeL(DoubleMatrix K, double noiselvl){
+		DoubleMatrix identity = DoubleMatrix.eye(K.rows);
+		DoubleMatrix temp = K.add(identity.mul(noiselvl));
+		DoubleMatrix el = Decompose.cholesky(temp);
+		return el;
+	}
+	
+	public double computeMean(){return 0;}
+	public double computeVariance(){return 0;}
 
 	public double negativeLogLikelihood(DoubleMatrix parameters, DoubleMatrix in, DoubleMatrix out, DoubleMatrix df0){
-		double loglike = out.transpose().mul(calculateAlpha(in, out, parameters, noiselevel)).get(0,0)*(-0.5);
-		for(int i = 0; i < l.rows; i++){
-			loglike -= Math.log(l.get(i, i));
+		DoubleMatrix alpha = computeAlpha(in, out, parameters, noiselevel);
+		double loglike = out.transpose().mmul(alpha).get(0,0)*(-0.5);
+		DoubleMatrix cova = computeCovMatrix(in, in, parameters);
+		DoubleMatrix identity = DoubleMatrix.eye(in.rows);
+		DoubleMatrix temp = cova.add(identity.mul(noiselevel));
+		DoubleMatrix el = Decompose.cholesky(temp);
+		for(int i = 0; i < el.rows; i++){
+			loglike -= Math.log(el.get(i, i));
 		}
 		loglike -= (numTrain/2)*Math.log(2*Math.PI);
+		
+	    DoubleMatrix W = bSubstitutionWithTranspose(el,(fSubstitution(el,DoubleMatrix.eye(in.columns)))).sub(alpha.mmul(alpha.transpose()));     // precompute for convenience
+	    DoubleMatrix t1 = DoubleMatrix.eye(in.columns);
+	    DoubleMatrix t2 = fSubstitution(el,DoubleMatrix.eye(in.columns));
+	    DoubleMatrix t3 = bSubstitutionWithTranspose(el,(fSubstitution(el,DoubleMatrix.eye(in.columns))));
+
+        for(int i=0; i<df0.rows; i++){
+            df0.put(i,0,W.mul(covf.computeDerivatives(parameters, in, i)).sum()/2);
+        }
+
+//		System.out.println(loglike);
 		return -loglike;
 	}
 	
 	// compute the covariance matrix of two vector inputs TODO: double computations unnecessary when k = kstar
 	public DoubleMatrix computeCovMatrix(DoubleMatrix k, DoubleMatrix kstar, DoubleMatrix parameters){
-		DoubleMatrix result = new DoubleMatrix(k.columns,kstar.columns);
-		for(int i = 0; i<1; i++){
-			for(int j = 0; j<1; j++){
-				result.put(i, j, covf.computeCovariance(k.getColumn(i), kstar.getColumn(j), parameters));
+		DoubleMatrix result = new DoubleMatrix(k.rows,kstar.rows);
+		for(int i = 0; i<k.rows; i++){
+			for(int j = 0; j<kstar.rows; j++){
+				result.put(i, j, covf.computeCovariance(k.getRow(i), kstar.getRow(j), parameters));
 			}
 		}
 		return result;
 	}
 	
+	public DoubleMatrix generateSamples(DoubleMatrix in, DoubleMatrix parameters, double small, CovarianceFunction covf){
+		DoubleMatrix k = computeCovMatrix(in, in, parameters);
+		DoubleMatrix smallId = DoubleMatrix.eye(k.columns).mul(small);
+		k = k.add(smallId);
+		DoubleMatrix l = Decompose.cholesky(k);
+		DoubleMatrix u = DoubleMatrix.randn(k.columns);
+		DoubleMatrix y = l.transpose().mmul(u);
+		return y;
+	}
 	
     private final static double INT = 0.1;                // don't reevaluate within 0.1 of the limit of the current bracket
 
@@ -108,13 +149,13 @@ public class GP {
     private final static double RATIO = 10;               // maximum allowed slope ratio
 
     private final static double SIG = 0.1, RHO = SIG/2;   // SIG and RHO are the constants controlling the Wolfe-
-    // Powell conditions. SIG is the maximum allowed absolute ratio between
-    // previous and new slopes (derivatives in the search direction), thus setting
-    // SIG to low (positive) values forces higher precision in the line-searches.
-    // RHO is the minimum allowed fraction of the expected (from the slope at the
-    // initial point in the linesearch). Constants must satisfy 0 < RHO < SIG < 1.
-    // Tuning of SIG (depending on the nature of the function to be optimized) may
-    // speed up the minimization; it is probably not worth playing much with RHO.
+    /* Powell conditions. SIG is the maximum allowed absolute ratio between
+    * previous and new slopes (derivatives in the search direction), thus setting
+    * SIG to low (positive) values forces higher precision in the line-searches.
+    * RHO is the minimum allowed fraction of the expected (from the slope at the
+    * initial point in the linesearch). Constants must satisfy 0 < RHO < SIG < 1.
+    * Tuning of SIG (depending on the nature of the function to be optimized) may
+    * speed up the minimization; it is probably not worth playing much with RHO.
 
     /* This function is part of the jgpml Project.
      * http://github.com/renzodenardi/jgpml
@@ -160,16 +201,17 @@ public class GP {
 
         df0 = new DoubleMatrix(sizeX,1);
         f0 = negativeLogLikelihood(params, in, out,df0);
+        System.out.println("df0:");
+        df0.print();
+        System.out.println("f0:" + f0);
         //f0 = f.evaluate(params,cf, in, out, df0);
-
         fX = new DoubleMatrix(new double[]{f0});
 
         i = (length < 0) ? i+1 : i;
-
-        DoubleMatrix s = df0.mul(-1);
+        DoubleMatrix s = df0.mmul(-1);
 
         // initial search direction (steepest) and slope
-        d0 = s.mul(-1).transpose().mul(s).get(0,0);
+        d0 = s.mmul(-1).transpose().mmul(s).get(0,0);
         x3 = red/(1-d0);                                  // initial step is red/(|s|+1)
 
         final int nCycles = Math.abs(length);
@@ -180,6 +222,7 @@ public class GP {
         while (i < nCycles){
             //System.out.println("-");
             i = (length > 0) ? i+1 : i;    // count iterations?!
+
 
             // make a copy of current values
             double F0 = f0;
@@ -202,9 +245,19 @@ public class GP {
                     //try
                     M = M - 1;   i = (length < 0) ? i+1 : i;    // count iterations?!
 
-                    DoubleMatrix m1 = params.add(s.mul(x3));
+                    DoubleMatrix m1 = params.add(s.mmul(x3));
                     //f3 = f.evaluate(m1,cf, in, out, df3);
+
                     f3 = negativeLogLikelihood(m1, in, out,df3);
+                    System.out.println("start small");
+
+                    System.out.println("F0:" + F0);
+                    System.out.println("df3:");
+                    df3.print();
+                    System.out.println("m1:");
+                    m1.print();
+                    System.out.println("f3:" + f3);
+                    System.out.println("end");
 
                     if (Double.isNaN(f3) || Double.isInfinite(f3) || hasInvalidNumbers(df3.toArray())){
                         x3 = (x2+x3)/2;     // catch any error which occured in f
@@ -215,12 +268,14 @@ public class GP {
                 }
 
                 if (f3 < F0){                   // keep best values
-                    X0 = s.mul(x3).add(params);
+                    X0 = s.mmul(x3).add(params);
                     F0 = f3;
                     dF0 = df3;
+                    System.out.println("found");
+
                 }
 
-                d3 = df3.transpose().mul(s).get(0,0);  // new slope
+                d3 = df3.transpose().mmul(s).get(0,0);  // new slope
 
                 if (d3 > SIG*d0 || f3 > f0+x3*RHO*d0 || M == 0){  // are we done extrapolating?
                     break;
@@ -270,24 +325,37 @@ public class GP {
 
                 x3 = Math.max(Math.min(x3, x4-INT*(x4-x2)),x2+INT*(x4-x2));  // don't accept too close
 
-                DoubleMatrix m1 = s.mul(x3).add(params);
+                DoubleMatrix m1 = s.mmul(x3).add(params);
                 //f3 = f.evaluate(m1,cf, in, out, df3);
+                
                 f3 = negativeLogLikelihood(m1, in, out,df3);
+                System.out.println("start");
+
+                System.out.println("df3:");
+                df3.print();
+                System.out.println("m1:");
+                m1.print();
+                System.out.println("F0:" + F0);
+
+                System.out.println("f3:" + f3);
+                System.out.println("end");
 
                 if (f3 < F0){
                     X0 = m1.dup();
                     F0 = f3;
-                    dF0 = df3.dup();                            // keep best values
+                    dF0 = df3.dup(); 
+                    System.out.println("found");
+				// keep best values
                 }
 
                 M = M - 1;  i = (length < 0) ? i+1 : i;          // count iterations?!
 
-                d3 = df3.transpose().mul(s).get(0,0); // new slope
+                d3 = df3.transpose().mmul(s).get(0,0); // new slope
 
             }                                                    // end interpolation
 
             if (Math.abs(d3) < -SIG*d0 && f3 < f0+x3*RHO*d0){     // if line search succeeded
-                params = s.mul(x3).add(params);
+                params = s.mmul(x3).add(params);
                 f0 = f3;
 
                 double[] elem = fX.toArray();
@@ -301,18 +369,18 @@ public class GP {
                 System.out.println("Function evaluation "+i+" Value "+f0);
 
                 
-                double tmp1 = df3.transpose().mul(df3).sub(df0.transpose().mul(df3)).get(0,0);
-                double tmp2 = df0.transpose().mul(df0).get(0,0);
+                double tmp1 = df3.transpose().mmul(df3).sub(df0.transpose().mmul(df3)).get(0,0);
+                double tmp2 = df0.transpose().mmul(df0).get(0,0);
 
-                s =  s.mul(tmp1/tmp2).sub(df3);
+                s =  s.mmul(tmp1/tmp2).sub(df3);
 
                 df0 = df3;                          // swap derivatives
                 d3 = d0;
-                d0 = df0.transpose().mul(s).get(0,0);
+                d0 = df0.transpose().mmul(s).get(0,0);
 
                 if (d0 > 0){                        // new slope must be negative
-                    s = df0.mul(-1);              // otherwise use steepest direction
-                    d0 = s.mul(-1).transpose().mul(s).get(0,0);
+                    s = df0.mmul(-1);              // otherwise use steepest direction
+                    d0 = s.mmul(-1).transpose().mmul(s).get(0,0);
                 }
 
                 x3 = x3 * Math.min(RATIO, d3/(d0-Double.MIN_VALUE));    // slope ratio but max RATIO
@@ -326,12 +394,11 @@ public class GP {
                     break;                                      // or we ran out of time, so we give up
                 }
 
-                s = df0.mul(-1); d0 = s.mul(-1).transpose().mul(s).get(0,0);      // try steepest
+                s = df0.mmul(-1); d0 = s.mmul(-1).transpose().mmul(s).get(0,0);      // try steepest
                 x3 = 1/(1-d0);
                 ls_failed = 1;                                                     // this line search failed
 
             }
-
         }
 
         return params;
@@ -346,5 +413,69 @@ public class GP {
         }
 
         return false;
+    }
+    
+    private static DoubleMatrix fSubstitution(DoubleMatrix L, DoubleMatrix B){
+
+        final double[][] l = L.toArray2();
+        final double[][] b = B.toArray2();
+        final double[][] x = new double[B.rows][B.columns];
+
+        final int n = x.length;
+
+        for(int i=0; i<B.columns; i++){
+            for(int k=0; k<n; k++){
+                x[k][i] = b[k][i];
+                for(int j=0; j<k; j++){
+                    x[k][i] -= l[k][j] * x[j][i];
+                }
+                x[k][i] /= l[k][k];
+            }
+        }
+        return new DoubleMatrix(x);
+    }
+
+
+
+    private static DoubleMatrix bSubstitution(DoubleMatrix L, DoubleMatrix B){
+
+        final double[][] l = L.toArray2();
+        final double[][] b = B.toArray2();
+        final double[][] x = new double[B.rows][B.columns];
+
+        final int n = x.length-1;
+
+        for(int i=0; i<B.columns; i++){
+            for(int k=n; k > -1; k--){
+                x[k][i] = b[k][i];
+                for(int j=n; j>k; j--){
+                    x[k][i] -= l[k][j] * x[j][i];
+                }
+                x[k][i] /= l[k][k];
+            }
+        }
+        return new DoubleMatrix(x);
+
+    }
+
+     private static DoubleMatrix bSubstitutionWithTranspose(DoubleMatrix L, DoubleMatrix B){
+
+        final double[][] l = L.toArray2();
+        final double[][] b = B.toArray2();
+        final double[][] x = new double[B.rows][B.rows];
+
+        final int n = x.length-1;
+
+        for(int i=0; i<B.columns; i++){
+            for(int k=n; k > -1; k--){
+                x[k][i] = b[k][i];
+                for(int j=n; j>k; j--){
+                    x[k][i] -= l[j][k] * x[j][i];
+                }
+                x[k][i] /= l[k][k];
+            }
+        }
+        return new DoubleMatrix(x);
+
     }
 }

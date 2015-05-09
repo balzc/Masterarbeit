@@ -12,5 +12,7 @@ public class CovarianceFunction {
 		this.parameters = parameters;
 		return x.distance2(xstar);
 	}
-
+	public DoubleMatrix computeDerivatives(DoubleMatrix loghyper, DoubleMatrix X, int index) {
+		return loghyper;
+	}
 }
