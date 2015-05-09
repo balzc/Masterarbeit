@@ -1,8 +1,12 @@
 package cov;
 
+
+import java.util.Arrays;
+
 import org.jblas.DoubleMatrix;
 
-public class SquaredExponential extends CovarianceFunction{
+
+public class CovSEiso extends CovarianceFunction{
 	public DoubleMatrix parameters;
 	public int numParams = 2;
 	public double computeCovariance(double x, double xstar, DoubleMatrix parameters){
@@ -11,10 +15,16 @@ public class SquaredExponential extends CovarianceFunction{
 		return parameters.get(0)*parameters.get(0) *Math.exp(- 1/(2 * parameters.get(1)*parameters.get(1)) * d*d);
 		
 	}
-	public double computeCovariance(DoubleMatrix x, DoubleMatrix xstar, DoubleMatrix parameters){
-		this.parameters = parameters;
-		double d = x.distance2(xstar);
-		return parameters.get(0)*parameters.get(0) *Math.exp(- 1/(2 * parameters.get(1)*parameters.get(1)) * d*d);
+	public DoubleMatrix computeCovarianceMatrix(DoubleMatrix x, DoubleMatrix xstar, DoubleMatrix parameters){
+		   if(parameters.columns!=1 || parameters.rows!=numParams)
+	            throw new IllegalArgumentException("Wrong number of hyperparameters, "+parameters.rows+" instead of "+numParams);
+
+	        double ell = Math.exp(parameters.get(0,0));
+	        double sf2 = Math.exp(2*parameters.get(1,0));
+
+	        DoubleMatrix K = exp(squareDist(x.transpose().mul(1/ell)).mul(-0.5)).mul(sf2);
+
+	        return K;
 	}
 	
 	public DoubleMatrix computeDerivatives(DoubleMatrix loghyper, DoubleMatrix X, int index) {
@@ -26,22 +36,20 @@ public class SquaredExponential extends CovarianceFunction{
 
         double ell = Math.exp(loghyper.get(0,0));
         double sf2 = Math.exp(2*loghyper.get(1,0));
-        DoubleMatrix tp = X.transpose().mul(1/ell);
+        DoubleMatrix tp = X.transpose().mmul(1/ell);
         DoubleMatrix tmp = squareDist(tp.transpose());
    
         DoubleMatrix A = null;
         if(index==0){
-            A = exp(tmp.mul(-0.5)).mul(tmp).mul(sf2).mul(0.9);
+            A = exp(tmp.mul(-0.5)).mul(tmp).mul(sf2);
         } else {
             A = exp(tmp.mul(-0.5)).mul(2*sf2);
         }
-//        System.out.println("A: " + index);
-//        A.print();
+        System.out.println("A: " + index);
+        A.print();
         return A;
     }
-	public double computeCovariance(double d, double[] theta) {
-		return theta[0]*theta[0] *Math.exp(- 1/(2 * theta[1]*theta[1]) * d*d);
-	}
+	
 	public static DoubleMatrix exp(DoubleMatrix A){
 
 		DoubleMatrix out = new DoubleMatrix(A.rows,A.columns);

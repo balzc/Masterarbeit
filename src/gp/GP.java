@@ -35,8 +35,23 @@ public class GP {
 		covf = cf;
 		numTest = testIn.columns;
 		numTrain = trainIn.columns;
-		double[] dataX = {1,1};
-		double[] dataY = {2,2};
+		
+
+		
+//		
+//		
+//		DoubleMatrix beta = Solve.pinv(l).mmul(Solve.pinv(l).mmul(trainOut.transpose()));
+//		alpha = Solve.solve(l.transpose(), Solve.solve(l, trainOut.transpose()));
+//		predMean = testCov.transpose().mmul(alpha);
+//		predVar = Solve.solve(l, testCov);
+//		System.out.println("End");
+
+		
+	}
+	
+	public void test(){
+		double[] dataX = {1,2,3,4,5,6,7,8,9,10};
+		double[] dataY = {2,2,3,4,1,2,4,2,3,2};
 		double[] dataP = {1,1};
 		double nl = 0.05;
 		noiselevel = nl;
@@ -56,26 +71,15 @@ public class GP {
 		samples.print();
 		
 	
-		double[] p = {10,0.1};
-		
-		DoubleMatrix param = minimize(new DoubleMatrix(p), -1000, X, samples);
-
+		double[][] ps = OptimizeHyperparameters.optimizeParams(X.transpose(), samples.transpose(), covf, 2, true, nl);
+		DoubleMatrix param = new DoubleMatrix(ps[1]);
 		System.out.println("Parameters after");
 		param.print();
 		System.out.println(negativeLogLikelihood(parameters, X, samples, P));
-		System.out.println(negativeLogLikelihood(new DoubleMatrix(p), X, samples, P));
-
-		
-//		
-//		
-//		DoubleMatrix beta = Solve.pinv(l).mmul(Solve.pinv(l).mmul(trainOut.transpose()));
-//		alpha = Solve.solve(l.transpose(), Solve.solve(l, trainOut.transpose()));
-//		predMean = testCov.transpose().mmul(alpha);
-//		predVar = Solve.solve(l, testCov);
-//		System.out.println("End");
-
+		System.out.println(negativeLogLikelihood(param, X, samples, P));
 		
 	}
+	
 	public DoubleMatrix computeAlpha(DoubleMatrix trainInput,  DoubleMatrix trainOutput, DoubleMatrix parameters, double noiselvl){
 		DoubleMatrix cova = computeCovMatrix(trainInput, trainInput,parameters);
 		DoubleMatrix identity = DoubleMatrix.eye(trainInput.rows);
@@ -106,14 +110,14 @@ public class GP {
 		}
 		loglike -= (numTrain/2)*Math.log(2*Math.PI);
 		
-	    DoubleMatrix W = bSubstitutionWithTranspose(el,(fSubstitution(el,DoubleMatrix.eye(in.columns)))).sub(alpha.mmul(alpha.transpose()));     // precompute for convenience
-	    DoubleMatrix t1 = DoubleMatrix.eye(in.columns);
-	    DoubleMatrix t2 = fSubstitution(el,DoubleMatrix.eye(in.columns));
-	    DoubleMatrix t3 = bSubstitutionWithTranspose(el,(fSubstitution(el,DoubleMatrix.eye(in.columns))));
-
-        for(int i=0; i<df0.rows; i++){
-            df0.put(i,0,W.mul(covf.computeDerivatives(parameters, in, i)).sum()/2);
-        }
+//	    DoubleMatrix W = bSubstitutionWithTranspose(el,(fSubstitution(el,DoubleMatrix.eye(in.columns)))).sub(alpha.mmul(alpha.transpose()));     // precompute for convenience
+//	    DoubleMatrix t1 = DoubleMatrix.eye(in.columns);
+//	    DoubleMatrix t2 = fSubstitution(el,DoubleMatrix.eye(in.columns));
+//	    DoubleMatrix t3 = bSubstitutionWithTranspose(el,(fSubstitution(el,DoubleMatrix.eye(in.columns))));
+//
+//        for(int i=0; i<df0.rows; i++){
+//            df0.put(i,0,W.mul(covf.computeDerivatives(parameters, in, i)).sum()/2);
+//        }
 
 //		System.out.println(loglike);
 		return -loglike;
@@ -128,6 +132,7 @@ public class GP {
 			}
 		}
 		return result;
+		//return covf.computeCovarianceMatrix(k, kstar, parameters);
 	}
 	
 	public DoubleMatrix generateSamples(DoubleMatrix in, DoubleMatrix parameters, double small, CovarianceFunction covf){
@@ -201,9 +206,9 @@ public class GP {
 
         df0 = new DoubleMatrix(sizeX,1);
         f0 = negativeLogLikelihood(params, in, out,df0);
-        System.out.println("df0:");
-        df0.print();
-        System.out.println("f0:" + f0);
+//        System.out.println("df0:");
+//        df0.print();
+//        System.out.println("f0:" + f0);
         //f0 = f.evaluate(params,cf, in, out, df0);
         fX = new DoubleMatrix(new double[]{f0});
 
@@ -249,15 +254,15 @@ public class GP {
                     //f3 = f.evaluate(m1,cf, in, out, df3);
 
                     f3 = negativeLogLikelihood(m1, in, out,df3);
-                    System.out.println("start small");
-
-                    System.out.println("F0:" + F0);
-                    System.out.println("df3:");
-                    df3.print();
-                    System.out.println("m1:");
-                    m1.print();
-                    System.out.println("f3:" + f3);
-                    System.out.println("end");
+//                    System.out.println("start small");
+//
+//                    System.out.println("F0:" + F0);
+//                    System.out.println("df3:");
+//                    df3.print();
+//                    System.out.println("m1:");
+//                    m1.print();
+//                    System.out.println("f3:" + f3);
+//                    System.out.println("end");
 
                     if (Double.isNaN(f3) || Double.isInfinite(f3) || hasInvalidNumbers(df3.toArray())){
                         x3 = (x2+x3)/2;     // catch any error which occured in f
@@ -271,8 +276,8 @@ public class GP {
                     X0 = s.mmul(x3).add(params);
                     F0 = f3;
                     dF0 = df3;
-                    System.out.println("found");
-
+                    System.out.println("found part 1");
+                    X0.print();
                 }
 
                 d3 = df3.transpose().mmul(s).get(0,0);  // new slope
@@ -329,22 +334,23 @@ public class GP {
                 //f3 = f.evaluate(m1,cf, in, out, df3);
                 
                 f3 = negativeLogLikelihood(m1, in, out,df3);
-                System.out.println("start");
-
-                System.out.println("df3:");
-                df3.print();
-                System.out.println("m1:");
-                m1.print();
-                System.out.println("F0:" + F0);
-
-                System.out.println("f3:" + f3);
-                System.out.println("end");
+//                System.out.println("start");
+//
+//                System.out.println("df3:");
+//                df3.print();
+//                System.out.println("m1:");
+//                m1.print();
+//                System.out.println("F0:" + F0);
+//
+//                System.out.println("f3:" + f3);
+//                System.out.println("end");
 
                 if (f3 < F0){
                     X0 = m1.dup();
                     F0 = f3;
                     dF0 = df3.dup(); 
-                    System.out.println("found");
+                    System.out.println("found part 2");
+                    X0.print();
 				// keep best values
                 }
 
