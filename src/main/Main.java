@@ -2,8 +2,9 @@ package main;
 
 import org.jblas.DoubleMatrix;
 
-import cov.CovSEiso;
 import cov.CovarianceFunction;
+import cov.Multiplicative;
+import cov.Periodic;
 import cov.SquaredExponential;
 import gp.GP;
 
@@ -11,7 +12,9 @@ public class Main {
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		GP gp = new GP(DoubleMatrix.ones(2).transpose(),DoubleMatrix.ones(2).transpose(),DoubleMatrix.ones(2).transpose(), new SquaredExponential(), 0.11);
+		SquaredExponential c1 = new SquaredExponential();
+		Periodic c2 = new Periodic();
+		GP gp = new GP(DoubleMatrix.ones(2).transpose(),DoubleMatrix.ones(2).transpose(),DoubleMatrix.ones(2).transpose(), new Multiplicative(c1, c2), 0.11);
 		gp.test();
 	}
 

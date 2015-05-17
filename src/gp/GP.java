@@ -1,7 +1,6 @@
 package gp;
 
 
-import cov.CovSEiso;
 import cov.CovarianceFunction;
 import cov.SquaredExponential;
 
@@ -37,7 +36,6 @@ public class GP {
 		covf = cf;
 		numTest = testIn.columns;
 		numTrain = trainIn.columns;
-		
 
 		
 //		
@@ -52,21 +50,21 @@ public class GP {
 	}
 	
 	public void test(){
-		double[] dataX = new double[10];
+		double[] dataX = new double[100];
 		for(int i=0; i< dataX.length; i++){
 			dataX[i] = i;
 		}
 		double[] dataY = {2,2,3,4,1,2,4,2,3,2};
-		double[] dataP = {1,2};
+		double[] dataP = {0.5,0.1,0.2};
 		double[] dataTest = {11,12,13,14,15,16};
-		double nl = 0;
+		double nl = 0.5;
 		noiselevel = nl;
 		DoubleMatrix X = new DoubleMatrix(dataX);
 		DoubleMatrix Y = new DoubleMatrix(dataY);
 		DoubleMatrix P = new DoubleMatrix(dataP);
 		DoubleMatrix testIn = new DoubleMatrix(dataTest);
 		DoubleMatrix samples = generateSamples(X, P, nl, covf);
-		DoubleMatrix P2 = new DoubleMatrix(new double[] {1,0.5});
+		DoubleMatrix P2 = new DoubleMatrix(new double[] {0.1,0.2,0.3});
 		DoubleMatrix c = minimize(P2, 2, X, samples);
 		c.print();
 		
@@ -126,27 +124,16 @@ public class GP {
 	public double negativeLogLikelihood(DoubleMatrix logtheta,DoubleMatrix x, DoubleMatrix y, DoubleMatrix df0) {
 
         int n = 1;// x.rows;
-        System.out.println("params and x");
-        logtheta.print();
-        x.print();
         
         DoubleMatrix K = covf.computeSingleValue(logtheta, x);    // compute training set covariance matrix
-        System.out.println("K");
-        K.print();
         DoubleMatrix cd = Decompose.cholesky(K);
         if(!true) {
             throw new RuntimeException("The covariance Matrix is not SDP, check your covariance function (maybe you mess the noise term..)");
         }   else{
         	DoubleMatrix L = cd.transpose();                // cholesky factorization of the covariance
-            System.out.print("L: ");
-            L.print();
+        
             DoubleMatrix alpha = bSubstitutionWithTranspose(L,fSubstitution(L,y.transpose()));
-            System.out.print("y: ");
-            y.print();
-            System.out.print("fsub: ");
-            fSubstitution(L,y).print();
-            System.out.print("alpha: ");
-            alpha.print();
+            
 
             // compute the negative log marginal likelihood
             double lml = (y.mmul(alpha).mmul(0.5)).get(0,0);
@@ -158,16 +145,14 @@ public class GP {
 
 
             DoubleMatrix W = bSubstitutionWithTranspose(L,(fSubstitution(L,DoubleMatrix.eye(n)))).sub(alpha.mmul(alpha.transpose()));     // precompute for convenience
-            System.out.print("W: ");
-            W.print();
+        
             for(int i=0; i<df0.rows; i++){
-
-            	df0.put(i,0,(W.mul(covf.computeDerivatives(logtheta, x, i))).sum()/2);
+            	DoubleMatrix derivatives = covf.computeDerivatives(logtheta, x, i);
+            	df0.put(i,0,(W.mul(derivatives)).sum()/2);
+            	derivatives.print();
             }
-
-            System.out.print("df0: ");
             df0.print();
-            System.out.println("loglikely: " + lml);
+
             return -lml;
         }
     }
@@ -323,8 +308,8 @@ public class GP {
                     X0 = s.mmul(x3).add(params);
                     F0 = f3;
                     dF0 = df3;
-                    System.out.println("found part 1");
-                    X0.print();
+//                    System.out.println("found part 1");
+//                    X0.print();
                 }
 
                 d3 = df3.transpose().mmul(s).get(0,0);  // new slope
@@ -396,8 +381,8 @@ public class GP {
                     X0 = m1.dup();
                     F0 = f3;
                     dF0 = df3.dup(); 
-                    System.out.println("found part 2");
-                    X0.print();
+//                    System.out.println("found part 2");
+//                    X0.print();
 				// keep best values
                 }
 
@@ -419,7 +404,7 @@ public class GP {
                 fX = new DoubleMatrix(newfX);                 // update variables
 
 
-                System.out.println("Function evaluation "+i+" Value "+f0);
+//                System.out.println("Function evaluation "+i+" Value "+f0);
 
                 
                 double tmp1 = df3.transpose().mmul(df3).sub(df0.transpose().mmul(df3)).get(0,0);

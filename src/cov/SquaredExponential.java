@@ -1,17 +1,20 @@
 package cov;
 
 
-import javax.swing.table.TableColumnModel;
 
 import org.jblas.DoubleMatrix;
 
 
 public class SquaredExponential extends CovarianceFunction{
 	public DoubleMatrix parameters;
-	public int numParams = 2;
+	public int numParams;
+	public SquaredExponential(){
+		numParams = 2;
+	}
+	public int getNumParams(){return numParams;}
 	public double computeCovariance(double x, double xstar, DoubleMatrix parameters){
 		this.parameters = parameters;
-		double d = x-xstar;
+		double d = (x-xstar)*(x-xstar);
 		return parameters.get(0)*parameters.get(0) *Math.exp(- 1/(2 * parameters.get(1)*parameters.get(1)) * d*d);
 
 	}
@@ -54,42 +57,9 @@ public class SquaredExponential extends CovarianceFunction{
 			A = exp(tmp.mmul(-0.5)).mmul(2*sf2);
 		}
 
-		System.out.print("tmp: ");
-		tmp.print();
-		System.out.println("A: " + index + " = " + A.get(0,0));
+		
 		return A;
 	}
-	public double computeCovariance(double d, double[] theta) {
-		return theta[0]*theta[0] *Math.exp(- 1/(2 * theta[1]*theta[1]) * d*d);
-	}
-	public static DoubleMatrix exp(DoubleMatrix A){
-
-		DoubleMatrix out = new DoubleMatrix(A.rows,A.columns);
-		for(int i=0; i<A.rows; i++)
-			for(int j=0; j<A.columns; j++)
-				out.put(i,j,Math.exp(A.get(i,j)));
-
-		return out;
-	}
-
-	private static DoubleMatrix squareDist(DoubleMatrix a){
-		return squareDist(a,a);
-	}
-
-	private static DoubleMatrix squareDist(DoubleMatrix a, DoubleMatrix b){
-		DoubleMatrix C = new DoubleMatrix(a.columns,b.columns);
-		final int m = a.columns;
-		final int n = b.columns;
-		final int d = a.rows;
-
-		for (int i=0; i<m; i++){
-			for (int j=0; j<n; j++) {
-				double z = 0.0;
-				for (int k=0; k<d; k++) { double t = a.get(k,i) - b.get(k,j); z += t*t; }
-				C.put(i,j,z);
-			}
-		}
-
-		return C;
-	}
+	
+	
 }
