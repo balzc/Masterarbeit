@@ -25,4 +25,8 @@ public class CovarianceFunction {
 	public DoubleMatrix computeDerivatives(DoubleMatrix loghyper, DoubleMatrix X, int index) {
 		return loghyper;
 	}
+	
+	public DoubleMatrix computeSingleValue(DoubleMatrix loghyper, DoubleMatrix X){
+		return X;
+	}
 }

@@ -1,12 +1,8 @@
 package cov;
 
-
-import javax.swing.table.TableColumnModel;
-
 import org.jblas.DoubleMatrix;
 
-
-public class SquaredExponential extends CovarianceFunction{
+public class Periodic extends CovarianceFunction{
 	public DoubleMatrix parameters;
 	public int numParams = 2;
 	public double computeCovariance(double x, double xstar, DoubleMatrix parameters){

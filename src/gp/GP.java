@@ -1,5 +1,7 @@
 package gp;
 
+
+import cov.CovSEiso;
 import cov.CovarianceFunction;
 import cov.SquaredExponential;
 
@@ -14,7 +16,7 @@ public class GP {
 	private DoubleMatrix testOut;
 	
 	private DoubleMatrix l;
-	private DoubleMatrix alpha;
+//	private DoubleMatrix alpha;
 	private DoubleMatrix targets;
 	private double noiselevel;
 	private DoubleMatrix trainCov;
@@ -50,34 +52,26 @@ public class GP {
 	}
 	
 	public void test(){
-		double[] dataX = {1,2,3,4,5,6,7,8,9,10};
+		double[] dataX = new double[10];
+		for(int i=0; i< dataX.length; i++){
+			dataX[i] = i;
+		}
 		double[] dataY = {2,2,3,4,1,2,4,2,3,2};
-		double[] dataP = {1,1};
-		double nl = 0.05;
+		double[] dataP = {1,2};
+		double[] dataTest = {11,12,13,14,15,16};
+		double nl = 0;
 		noiselevel = nl;
 		DoubleMatrix X = new DoubleMatrix(dataX);
 		DoubleMatrix Y = new DoubleMatrix(dataY);
 		DoubleMatrix P = new DoubleMatrix(dataP);
-//		DoubleMatrix C = computeCovMatrix(X,X, P);
-		System.out.println("Covariance");
-		System.out.println(computeCovMatrix(X, X, P));
+		DoubleMatrix testIn = new DoubleMatrix(dataTest);
+		DoubleMatrix samples = generateSamples(X, P, nl, covf);
+		DoubleMatrix P2 = new DoubleMatrix(new double[] {1,0.5});
+		DoubleMatrix c = minimize(P2, 2, X, samples);
+		c.print();
+		
 
-		
-		DoubleMatrix parameters = new DoubleMatrix(dataP);//DoubleMatrix.randn(2);
-		System.out.println("Parameters before");
-		parameters.print();
-		DoubleMatrix samples = generateSamples(X, parameters, 1, covf);
-		System.out.println("Samples:");
-		samples.print();
-		
-	
-		double[][] ps = OptimizeHyperparameters.optimizeParams(X.transpose(), samples.transpose(), covf, 2, true, nl);
-		DoubleMatrix param = new DoubleMatrix(ps[1]);
-		System.out.println("Parameters after");
-		param.print();
-		System.out.println(negativeLogLikelihood(parameters, X, samples, P));
-		System.out.println(negativeLogLikelihood(param, X, samples, P));
-		
+
 	}
 	
 	public DoubleMatrix computeAlpha(DoubleMatrix trainInput,  DoubleMatrix trainOutput, DoubleMatrix parameters, double noiselvl){
@@ -85,6 +79,7 @@ public class GP {
 		DoubleMatrix identity = DoubleMatrix.eye(trainInput.rows);
 		DoubleMatrix temp = cova.add(identity.mul(noiselvl));
 		DoubleMatrix el = Decompose.cholesky(temp);
+	
 		return Solve.solve(el.transpose(), Solve.solve(el, trainOutput));
 	}
 	
@@ -95,10 +90,20 @@ public class GP {
 		return el;
 	}
 	
-	public double computeMean(){return 0;}
-	public double computeVariance(){return 0;}
+	public DoubleMatrix computeMean(DoubleMatrix trainIn, DoubleMatrix testIn, DoubleMatrix parameters, DoubleMatrix alpha){
+		DoubleMatrix cova = computeCovMatrix(trainIn, testIn, parameters);
+		DoubleMatrix mean = cova.transpose().mmul(alpha);
+		return mean;
+	}
+	public DoubleMatrix computeVariance(DoubleMatrix trainIn, DoubleMatrix testIn, DoubleMatrix parameters, DoubleMatrix l){
+		DoubleMatrix covaTrainTest = computeCovMatrix(trainIn, testIn, parameters);
+		DoubleMatrix v = Solve.solve(l, covaTrainTest);
+		DoubleMatrix covaTest = computeCovMatrix(testIn, testIn, parameters);
+		DoubleMatrix variance = covaTest.sub(v.transpose().mmul(v));
+		return variance;
+	}
 
-	public double negativeLogLikelihood(DoubleMatrix parameters, DoubleMatrix in, DoubleMatrix out, DoubleMatrix df0){
+	public double negativeLogLikelihood2(DoubleMatrix parameters, DoubleMatrix in, DoubleMatrix out, DoubleMatrix df0){
 		DoubleMatrix alpha = computeAlpha(in, out, parameters, noiselevel);
 		double loglike = out.transpose().mmul(alpha).get(0,0)*(-0.5);
 		DoubleMatrix cova = computeCovMatrix(in, in, parameters);
@@ -110,19 +115,62 @@ public class GP {
 		}
 		loglike -= (numTrain/2)*Math.log(2*Math.PI);
 		
-//	    DoubleMatrix W = bSubstitutionWithTranspose(el,(fSubstitution(el,DoubleMatrix.eye(in.columns)))).sub(alpha.mmul(alpha.transpose()));     // precompute for convenience
-//	    DoubleMatrix t1 = DoubleMatrix.eye(in.columns);
-//	    DoubleMatrix t2 = fSubstitution(el,DoubleMatrix.eye(in.columns));
-//	    DoubleMatrix t3 = bSubstitutionWithTranspose(el,(fSubstitution(el,DoubleMatrix.eye(in.columns))));
-//
-//        for(int i=0; i<df0.rows; i++){
-//            df0.put(i,0,W.mul(covf.computeDerivatives(parameters, in, i)).sum()/2);
-//        }
+	    DoubleMatrix W = bSubstitutionWithTranspose(el,(fSubstitution(el,DoubleMatrix.eye(in.columns)))).sub(alpha.mmul(alpha.transpose()));     // precompute for convenience
 
-//		System.out.println(loglike);
+        for(int i=0; i<df0.rows; i++){
+            df0.put(i,0,W.mul(covf.computeDerivatives(parameters, in, i)).sum()/2);
+        }
+        df0.print();
 		return -loglike;
 	}
-	
+	public double negativeLogLikelihood(DoubleMatrix logtheta,DoubleMatrix x, DoubleMatrix y, DoubleMatrix df0) {
+
+        int n = 1;// x.rows;
+        System.out.println("params and x");
+        logtheta.print();
+        x.print();
+        
+        DoubleMatrix K = covf.computeSingleValue(logtheta, x);    // compute training set covariance matrix
+        System.out.println("K");
+        K.print();
+        DoubleMatrix cd = Decompose.cholesky(K);
+        if(!true) {
+            throw new RuntimeException("The covariance Matrix is not SDP, check your covariance function (maybe you mess the noise term..)");
+        }   else{
+        	DoubleMatrix L = cd.transpose();                // cholesky factorization of the covariance
+            System.out.print("L: ");
+            L.print();
+            DoubleMatrix alpha = bSubstitutionWithTranspose(L,fSubstitution(L,y.transpose()));
+            System.out.print("y: ");
+            y.print();
+            System.out.print("fsub: ");
+            fSubstitution(L,y).print();
+            System.out.print("alpha: ");
+            alpha.print();
+
+            // compute the negative log marginal likelihood
+            double lml = (y.mmul(alpha).mmul(0.5)).get(0,0);
+
+            for(int i=0; i<L.rows; i++) lml+=Math.log(L.get(i,i));
+            lml += 0.5*n*Math.log(2*Math.PI);
+
+
+
+
+            DoubleMatrix W = bSubstitutionWithTranspose(L,(fSubstitution(L,DoubleMatrix.eye(n)))).sub(alpha.mmul(alpha.transpose()));     // precompute for convenience
+            System.out.print("W: ");
+            W.print();
+            for(int i=0; i<df0.rows; i++){
+
+            	df0.put(i,0,(W.mul(covf.computeDerivatives(logtheta, x, i))).sum()/2);
+            }
+
+            System.out.print("df0: ");
+            df0.print();
+            System.out.println("loglikely: " + lml);
+            return -lml;
+        }
+    }
 	// compute the covariance matrix of two vector inputs TODO: double computations unnecessary when k = kstar
 	public DoubleMatrix computeCovMatrix(DoubleMatrix k, DoubleMatrix kstar, DoubleMatrix parameters){
 		DoubleMatrix result = new DoubleMatrix(k.rows,kstar.rows);
@@ -132,8 +180,8 @@ public class GP {
 			}
 		}
 		return result;
-		//return covf.computeCovarianceMatrix(k, kstar, parameters);
 	}
+
 	
 	public DoubleMatrix generateSamples(DoubleMatrix in, DoubleMatrix parameters, double small, CovarianceFunction covf){
 		DoubleMatrix k = computeCovMatrix(in, in, parameters);
@@ -206,8 +254,7 @@ public class GP {
 
         df0 = new DoubleMatrix(sizeX,1);
         f0 = negativeLogLikelihood(params, in, out,df0);
-//        System.out.println("df0:");
-//        df0.print();
+
 //        System.out.println("f0:" + f0);
         //f0 = f.evaluate(params,cf, in, out, df0);
         fX = new DoubleMatrix(new double[]{f0});
@@ -468,7 +515,7 @@ public class GP {
 
         final double[][] l = L.toArray2();
         final double[][] b = B.toArray2();
-        final double[][] x = new double[B.rows][B.rows];
+        final double[][] x = new double[B.rows][B.columns];
 
         final int n = x.length-1;
 

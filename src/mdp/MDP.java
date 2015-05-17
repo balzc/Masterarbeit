@@ -4,14 +4,23 @@ public class MDP {
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		int states = 4;
+		int states = 11;
 		int timesteps = 10;
-		double[][][] actions = {{{0,1,0,0},{0,0,1,0}},{{0.5,0,0,0.5}},{{0.2,0,0,0.8}},{{0,0,0,1}}};//new float[states][states][states];
-		double[] rewards = new double[states];
-		rewards[0] = 0;
-		rewards[1] = 1;
-		rewards[2] = 0;
-		rewards[3] = 2;
+		double[][][] actions = {{{0.1,0.8,0,0.1,0,0,0,0,0,0,0},{0.1,0.1,0,0.8,0,0,0,0,0,0,0}},
+				{{0,0.2,0.8,0,0,0,0,0,0,0,0},{0.8,0.2,0,0,0,0,0,0,0,0,0}},
+				{{0,0,0,0.2,0,0.8,0,0,0,0,0},{0.8,0,0,0.2,0,0,0,0,0,0,0}},
+				{{0,0,0,0.2,0,0.8,0,0,0,0,0},{0.8,0,0,0.2,0,0,0,0,0,0,0}},
+				{{0,0,0.8,0,0.2,0,0,0,0,0,0},{0,0,0,0,0.2,0,0,0.8,0,0,0}},
+				{{0,0,0,0.8,0,0.1,0.1,0,0,0,0},{0,0,0,0.1,0,0,0.8,0,0.1,0,0},{0,0,0,0,0,0.1,0.1,0,0.8,0,0}},
+				{{0,0,0,0,0,0.8,0.1,0,0,0.1,0},{0,0,0,0,0,0.1,0,0.1,0,0.8,0},{0,0,0,0,0,0,0.1,0.8,0,0.1,0}},
+				{{0,0,0,0,0.8,0,0.1,0.1,0,0,0},{0,0,0,0,0,0.1,0,0.1,0,0.8,0},{0,0,0,0,0,0,0.1,0.1,0,0,0.8}},
+				{{0,0,0,0,0,0.8,0,0,0.1,0.1,0},{0,0,0,0,0,0.1,0,0,0.1,0.8,0}},{},{}};//new float[states][states][states];
+		double[] rewards = {-0.04,-0.04,-0.04,-0.04,-0.04,-0.04,-0.04,-0.04,-0.04,-1,1};//new double[states];
+		
+//		rewards[0] = 0;
+//		rewards[1] = 1;
+//		rewards[2] = 0;
+//		rewards[3] = 2;
 
 		solveMDP(states, timesteps, actions, rewards);
 	}
@@ -44,6 +53,9 @@ public class MDP {
 
 				}
 				expectedRewards[s][t] = maxReward;
+				if(actions[s].length == 0){
+					expectedRewards[s][t] = expectedRewards[s][t+1]; // if no action available keep reward
+				}
 				policy[s][t] = bestAction;
 				System.out.println("state: " + s + " done");
 
@@ -52,12 +64,16 @@ public class MDP {
 
 		}
 		for(int i = 0; i < states; i++){
+			System.out.print(i + ": ");
+
 			for(int o = 0; o < timesteps; o++){
 				System.out.print(policy[i][o] + " ");
 			}
 			System.out.println();
 		}
 		for(int i = 0; i < states; i++){
+			System.out.print(i + ": ");
+
 			for(int o = 0; o < timesteps; o++){
 				System.out.print(expectedRewards[i][o] + " ");
 			}
