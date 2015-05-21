@@ -72,9 +72,9 @@ public class Additive extends CovarianceFunction{
 			p2.put(i - cov1.getNumParams(), parameters.get(i));
 		}
 		if(index < cov1.getNumParams()){
-			return cov1.computeDerivatives(p1, X, index).add(cov2.computeSingleValue(p2, X));
+			return cov1.computeDerivatives(p1, X, index);
 		} else{
-			return cov2.computeDerivatives(p2, X, index-cov1.getNumParams()).add(cov1.computeSingleValue(p1, X));
+			return cov2.computeDerivatives(p2, X, index-cov1.getNumParams());
 		}
 		
 	}

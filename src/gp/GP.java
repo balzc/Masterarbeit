@@ -56,17 +56,19 @@ public class GP {
 		double[] dataX = new double[noData];
 		double[] dataY =  new double[noData];
 		for(int i=0; i< dataX.length; i++){
-			dataX[i] = i;
+			dataX[i] = i*0.01;
 			dataY[i] = Math.random();
 		}
-		double[] dataP = {0.5,0.1,0.2,0.3};
+		double[] dataP = {0.5,10,10};
 		double[] dataTest = {11,12,13,14,15,16};
-		double nl = 0.5;
+		double nl = 10;
 		noiselevel = nl;
 		DoubleMatrix X = new DoubleMatrix(dataX);
 		DoubleMatrix Y = new DoubleMatrix(dataY);
 		DoubleMatrix P = new DoubleMatrix(dataP);
 		DoubleMatrix testIn = new DoubleMatrix(dataTest);
+		DoubleMatrix co = computeCovMatrix(X, X, P);
+		co.print();
 		DoubleMatrix samples = generateSamples(X, P, nl, covf);
 		String dest = "/Users/Balz/Downloads/test.csv";
 		samples.print();
