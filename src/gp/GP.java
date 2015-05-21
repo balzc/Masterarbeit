@@ -7,6 +7,8 @@ import cov.SquaredExponential;
 import org.jblas.Decompose;
 import org.jblas.Solve;
 import org.jblas.DoubleMatrix;
+
+import util.FileHandler;
 public class GP {
 	private CovarianceFunction covf;
 	private DoubleMatrix trainIn;
@@ -50,12 +52,14 @@ public class GP {
 	}
 	
 	public void test(){
-		double[] dataX = new double[100];
+		int noData = 100;
+		double[] dataX = new double[noData];
+		double[] dataY =  new double[noData];
 		for(int i=0; i< dataX.length; i++){
 			dataX[i] = i;
+			dataY[i] = Math.random();
 		}
-		double[] dataY = {2,2,3,4,1,2,4,2,3,2};
-		double[] dataP = {0.5,0.1,0.2};
+		double[] dataP = {0.5,0.1,0.2,0.3};
 		double[] dataTest = {11,12,13,14,15,16};
 		double nl = 0.5;
 		noiselevel = nl;
@@ -64,11 +68,56 @@ public class GP {
 		DoubleMatrix P = new DoubleMatrix(dataP);
 		DoubleMatrix testIn = new DoubleMatrix(dataTest);
 		DoubleMatrix samples = generateSamples(X, P, nl, covf);
-		DoubleMatrix P2 = new DoubleMatrix(new double[] {0.1,0.2,0.3});
-		DoubleMatrix c = minimize(P2, 2, X, samples);
-		c.print();
-		
-
+		String dest = "/Users/Balz/Downloads/test.csv";
+		samples.print();
+		FileHandler.matrixToCsv(samples, dest);
+		DoubleMatrix tsamples = FileHandler.csvToMatrix(dest);
+		tsamples.print();
+//		System.out.print("[");
+//		for(int i = 0; i<noData; i++){
+//			System.out.print(Y.get(i)+ "; ");
+//
+//		}
+//		System.out.println("]");
+//		System.out.print("[");
+//
+//		for(int i = 0; i<noData; i++){
+//			System.out.print(X.get(i)+ "; ");
+//
+//		}
+//		System.out.println("]");
+//		System.out.print("[");
+//
+//		for(int i = 0; i<noData; i++){
+//			System.out.print(samples.get(i)+ "; ");
+//
+//		}
+//		System.out.println("]");
+//		samples.print();
+//		int noruns = 20;
+//		DoubleMatrix[] params = new DoubleMatrix[noruns];
+//		double maxloglike = -9999999;
+//		int maxrun = 0;
+//		double[] loglikelies = new double[noruns];
+//		for(int i = 0; i < noruns; i++){
+//			double p1 = Math.random();
+//			double p2 = Math.random();
+//			DoubleMatrix ps = new DoubleMatrix(new double[] {p1,p2});
+//			System.out.println("run: " + i);
+//			ps.print();
+//			params[i] = minimize(ps,100,X, samples);
+//			params[i].print();
+//			loglikelies[i] = negativeLogLikelihood(params[i], X, samples, new DoubleMatrix(new double[] {1,2}));
+//			if(loglikelies[i] > maxloglike){
+//				maxloglike = loglikelies[i];
+//				maxrun = i;
+//			}
+//		}
+//		System.out.println(loglikelies[maxrun]);
+//		params[maxrun].print();
+//		double[][] param = OptimizeHyperparameters.optimizeParams(X.transpose(), samples.transpose(), covf, 2, false, nl);
+//		System.out.println(param[0][0]);
+//		System.out.println(param[0][1]);
 
 	}
 	
@@ -149,7 +198,7 @@ public class GP {
             for(int i=0; i<df0.rows; i++){
             	DoubleMatrix derivatives = covf.computeDerivatives(logtheta, x, i);
             	df0.put(i,0,(W.mul(derivatives)).sum()/2);
-            	derivatives.print();
+//            	derivatives.print();
             }
             df0.print();
 
@@ -180,13 +229,13 @@ public class GP {
 	
     private final static double INT = 0.1;                // don't reevaluate within 0.1 of the limit of the current bracket
 
-    private final static double EXT = 3.0;                // extrapolate maximum 3 times the current step-size
+    private final static double EXT = 6.0;                // extrapolate maximum 3 times the current step-size
 
     private final static int MAX = 20;                    // max 20 function evaluations per line search
 
     private final static double RATIO = 10;               // maximum allowed slope ratio
 
-    private final static double SIG = 0.1, RHO = SIG/2;   // SIG and RHO are the constants controlling the Wolfe-
+    private final static double SIG = 0.9, RHO = SIG/2;   // SIG and RHO are the constants controlling the Wolfe-
     /* Powell conditions. SIG is the maximum allowed absolute ratio between
     * previous and new slopes (derivatives in the search direction), thus setting
     * SIG to low (positive) values forces higher precision in the line-searches.

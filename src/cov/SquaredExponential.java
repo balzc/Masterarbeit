@@ -45,11 +45,14 @@ public class SquaredExponential extends CovarianceFunction{
 
 		double ell = parameters.get(0,0);
 		double sf2 = parameters.get(1,0);
-		DoubleMatrix tp = X.transpose().mul(1/ell);
+		DoubleMatrix tp = X.mul(1/ell);
 		DoubleMatrix tmp = squareDist(tp.transpose());
-
-
-
+//		System.out.print("X");
+//		X.print();
+//		System.out.print("tmp");
+//		tmp.print();
+//		System.out.print("tp");
+//		tmp.print();
 		DoubleMatrix A = null;
 		if(index==0){
 			A = exp(tmp.mmul(-0.5)).mul(tmp).mmul(sf2);

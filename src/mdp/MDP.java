@@ -5,10 +5,10 @@ public class MDP {
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 		int states = 11;
-		int timesteps = 10;
+		int timesteps = 1000;
 		double[][][] actions = {{{0.1,0.8,0,0.1,0,0,0,0,0,0,0},{0.1,0.1,0,0.8,0,0,0,0,0,0,0}},
 				{{0,0.2,0.8,0,0,0,0,0,0,0,0},{0.8,0.2,0,0,0,0,0,0,0,0,0}},
-				{{0,0,0,0.2,0,0.8,0,0,0,0,0},{0.8,0,0,0.2,0,0,0,0,0,0,0}},
+				{{0,0.1,0.1,0,0.8,0,0,0,0,0,0},{0,0.8,0.1,0,0.1,0,0,0,0,0,0}},
 				{{0,0,0,0.2,0,0.8,0,0,0,0,0},{0.8,0,0,0.2,0,0,0,0,0,0,0}},
 				{{0,0,0.8,0,0.2,0,0,0,0,0,0},{0,0,0,0,0.2,0,0,0.8,0,0,0}},
 				{{0,0,0,0.8,0,0.1,0.1,0,0,0,0},{0,0,0,0.1,0,0,0.8,0,0.1,0,0},{0,0,0,0,0,0.1,0.1,0,0.8,0,0}},
@@ -35,13 +35,15 @@ public class MDP {
 		}
 		for(int t = timesteps-2; t > -1; t--){
 			for(int s = 0; s < states; s++){
-				double maxReward = -9999990;
+				double maxReward = -999999999;
 				int bestAction = 0;
+				System.out.println("state: " + s + " at timestep: " + t);
+
 				for(int o = 0; o < actions[s].length; o++){
 					double eReward = rewards[s];
 					for(int i = 0; i < actions[s][o].length; i++){
 						eReward += actions[s][o][i] * expectedRewards[i][t+1];
-						System.out.println(eReward);
+//						System.out.println(actions[s][o][i] + " * " + expectedRewards[i][t+1] + " = "+eReward);
 
 					}
 					if(maxReward < eReward){
@@ -54,13 +56,18 @@ public class MDP {
 				}
 				expectedRewards[s][t] = maxReward;
 				if(actions[s].length == 0){
-					expectedRewards[s][t] = expectedRewards[s][t+1]; // if no action available keep reward
+					expectedRewards[s][t] = rewards[s];//expectedRewards[s][t+1]*2; // if no action available keep reward
 				}
 				policy[s][t] = bestAction;
 				System.out.println("state: " + s + " done");
+				
 
 			}
 			System.out.println("timestep: " + t + " done");
+			for(int i = 0; i < states; i++){
+				System.out.print(i + ": " + expectedRewards[i][t]);
+				System.out.println();
+			}
 
 		}
 		for(int i = 0; i < states; i++){
