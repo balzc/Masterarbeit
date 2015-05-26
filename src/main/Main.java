@@ -1,6 +1,6 @@
 package main;
 
-import mdp.TestMDP;
+import src.mdp.TestMDP;
 
 import org.jblas.DoubleMatrix;
 
@@ -56,7 +56,10 @@ public class Main {
 			System.out.println();
 		}
 		testmdp.solveMDP(num);
+		gp.test();
 	}
+	
+	
 	public static void printMatrix(DoubleMatrix m){
 		System.out.print("[");
 		for(int i = 0; i< m.rows; i++){
