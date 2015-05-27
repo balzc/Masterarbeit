@@ -1,6 +1,6 @@
 package main;
 
-import src.mdp.TestMDP;
+import mdp.HomeHeatingMDP;
 
 import org.jblas.DoubleMatrix;
 
@@ -33,29 +33,29 @@ public class Main {
 		DoubleMatrix testIn = new DoubleMatrix(dataTest);
 		GP gp = new GP(DoubleMatrix.ones(2).transpose(),DoubleMatrix.ones(2).transpose(),DoubleMatrix.ones(2).transpose(), new SquaredExponential(), 0.11);
 
-		DoubleMatrix co = gp.computeCovMatrix(X, X, P);
-		DoubleMatrix samples = gp.generateSamples(X, P, nl, gp.covf);
-		printMatrix(samples);
-		printMatrix(X);
-
-		int num = 10;
-		TestMDP testmdp = new TestMDP(DoubleMatrix.zeros(co.rows) , co.transpose(), 1, num,0,10);
-		co.print();
-		testmdp.computePrices();
-		testmdp.computeProbabilityTables();
-		testmdp.computeRewards();
-		System.out.println(testmdp.priceProb.length);
-		for(int i = 0; i < testmdp.priceProb.length; i++){
-			System.out.print(i + ": ");
-
-			for(int o = 0; o < testmdp.priceProb[i].length; o++){
-				for(int j = 0; j < testmdp.priceProb[i][o].length; j++){
-					System.out.print(testmdp.priceProb[i][o][j] + " ");
-				}
-			}
-			System.out.println();
-		}
-		testmdp.solveMDP(num);
+//		DoubleMatrix co = gp.computeCovMatrix(X, X, P);
+//		DoubleMatrix samples = gp.generateSamples(X, P, nl, gp.covf);
+//		printMatrix(samples);
+//		printMatrix(X);
+//
+//		int num = 10;
+//		TestMDP testmdp = new TestMDP(DoubleMatrix.zeros(co.rows) , co.transpose(), 1, num,0,10);
+//		co.print();
+//		testmdp.computePrices();
+//		testmdp.computeProbabilityTables();
+//		testmdp.computeRewards();
+//		System.out.println(testmdp.priceProb.length);
+//		for(int i = 0; i < testmdp.priceProb.length; i++){
+//			System.out.print(i + ": ");
+//
+//			for(int o = 0; o < testmdp.priceProb[i].length; o++){
+//				for(int j = 0; j < testmdp.priceProb[i][o].length; j++){
+//					System.out.print(testmdp.priceProb[i][o][j] + " ");
+//				}
+//			}
+//			System.out.println();
+//		}
+//		testmdp.solveMDP(num);
 		gp.test();
 	}
 	
