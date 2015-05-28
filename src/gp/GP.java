@@ -3,6 +3,7 @@ package gp;
 
 import cov.CovarianceFunction;
 import cov.SquaredExponential;
+import main.Main;
 
 import org.jblas.Decompose;
 import org.jblas.Solve;
@@ -10,14 +11,14 @@ import org.jblas.DoubleMatrix;
 
 import util.FileHandler;
 public class GP {
-	public CovarianceFunction covf;
+	private CovarianceFunction covf;
 	private DoubleMatrix trainIn;
 	private DoubleMatrix trainOut;
 	private DoubleMatrix testIn;
 	private DoubleMatrix testOut;
 	
 	private DoubleMatrix l;
-//	private DoubleMatrix alpha;
+	private DoubleMatrix alpha;
 	private DoubleMatrix targets;
 	private double noiselevel;
 	private DoubleMatrix trainCov;
@@ -26,19 +27,19 @@ public class GP {
 	private DoubleMatrix predMean;
 	private DoubleMatrix predVar;
 	private double logLikelihood;
-	
+	private DoubleMatrix parameters;
 	private int numTest;
 	private int numTrain;
 	
-	public GP(DoubleMatrix trainInput,DoubleMatrix trainOutput, DoubleMatrix testInput, CovarianceFunction cf, double noisel){
-		noiselevel = noisel;
-		trainIn = trainInput;
-		testIn = testInput;
-		trainOut = trainOutput;
-		covf = cf;
-		numTest = testIn.columns;
-		numTrain = trainIn.columns;
-
+	public GP(DoubleMatrix trainInput,DoubleMatrix trainOutput, DoubleMatrix testInput, DoubleMatrix parameters, CovarianceFunction cf, double noisel){
+		this.noiselevel = noisel;
+		this.trainIn = trainInput;
+		this.testIn = testInput;
+		this.trainOut = trainOutput;
+		this.covf = cf;
+		this.numTest = this.testIn.columns;
+		this.numTrain = this.trainIn.columns;
+		this.parameters = parameters;
 		
 //		
 //		
@@ -50,6 +51,17 @@ public class GP {
 
 		
 	}
+	
+	public void setup(){
+		trainCov = computeCovMatrix(trainIn, trainIn, parameters);
+		testCov = computeCovMatrix(testIn, testIn, parameters);
+		testTrainCov = computeCovMatrix(trainIn, testIn, parameters);
+		alpha = computeAlpha();
+		l = computeL();
+		predMean = computeMean();
+		predVar = computeVariance();
+	}
+	
 	
 	public void test(){
 		int noData = 1000;
@@ -125,28 +137,29 @@ public class GP {
 
 	}
 	
-	public DoubleMatrix computeAlpha(DoubleMatrix trainInput,  DoubleMatrix trainOutput, DoubleMatrix parameters, double noiselvl){
-		DoubleMatrix cova = computeCovMatrix(trainInput, trainInput,parameters);
-		DoubleMatrix identity = DoubleMatrix.eye(trainInput.rows);
-		DoubleMatrix temp = cova.add(identity.mul(noiselvl));
+	public DoubleMatrix computeAlpha(){
+		DoubleMatrix cova = computeCovMatrix(trainIn, trainIn,parameters);
+		DoubleMatrix identity = DoubleMatrix.eye(trainIn.rows);
+		DoubleMatrix temp = cova.add(identity.mul(noiselevel));
 		DoubleMatrix el = Decompose.cholesky(temp);
 	
-		return Solve.solve(el.transpose(), Solve.solve(el, trainOutput));
+		return Solve.solve(el.transpose(), Solve.solve(el, trainOut));
 	}
 	
-	public DoubleMatrix computeL(DoubleMatrix K, double noiselvl){
-		DoubleMatrix identity = DoubleMatrix.eye(K.rows);
-		DoubleMatrix temp = K.add(identity.mul(noiselvl));
+	public DoubleMatrix computeL(){
+		DoubleMatrix identity = DoubleMatrix.eye(trainCov.rows);
+		DoubleMatrix temp = trainCov.add(identity.mul(noiselevel));
+		Main.printMatrix(temp);
 		DoubleMatrix el = Decompose.cholesky(temp);
 		return el;
 	}
 	
-	public DoubleMatrix computeMean(DoubleMatrix trainIn, DoubleMatrix testIn, DoubleMatrix parameters, DoubleMatrix alpha){
+	public DoubleMatrix computeMean(){
 		DoubleMatrix cova = computeCovMatrix(trainIn, testIn, parameters);
 		DoubleMatrix mean = cova.transpose().mmul(alpha);
 		return mean;
 	}
-	public DoubleMatrix computeVariance(DoubleMatrix trainIn, DoubleMatrix testIn, DoubleMatrix parameters, DoubleMatrix l){
+	public DoubleMatrix computeVariance(){
 		DoubleMatrix covaTrainTest = computeCovMatrix(trainIn, testIn, parameters);
 		DoubleMatrix v = Solve.solve(l, covaTrainTest);
 		DoubleMatrix covaTest = computeCovMatrix(testIn, testIn, parameters);
@@ -154,26 +167,26 @@ public class GP {
 		return variance;
 	}
 
-	public double negativeLogLikelihood2(DoubleMatrix parameters, DoubleMatrix in, DoubleMatrix out, DoubleMatrix df0){
-		DoubleMatrix alpha = computeAlpha(in, out, parameters, noiselevel);
-		double loglike = out.transpose().mmul(alpha).get(0,0)*(-0.5);
-		DoubleMatrix cova = computeCovMatrix(in, in, parameters);
-		DoubleMatrix identity = DoubleMatrix.eye(in.rows);
-		DoubleMatrix temp = cova.add(identity.mul(noiselevel));
-		DoubleMatrix el = Decompose.cholesky(temp);
-		for(int i = 0; i < el.rows; i++){
-			loglike -= Math.log(el.get(i, i));
-		}
-		loglike -= (numTrain/2)*Math.log(2*Math.PI);
-		
-	    DoubleMatrix W = bSubstitutionWithTranspose(el,(fSubstitution(el,DoubleMatrix.eye(in.columns)))).sub(alpha.mmul(alpha.transpose()));     // precompute for convenience
-
-        for(int i=0; i<df0.rows; i++){
-            df0.put(i,0,W.mul(covf.computeDerivatives(parameters, in, i)).sum()/2);
-        }
-        df0.print();
-		return -loglike;
-	}
+//	public double negativeLogLikelihood2(DoubleMatrix parameters, DoubleMatrix in, DoubleMatrix out, DoubleMatrix df0){
+//		DoubleMatrix alpha = computeAlpha(in, out, parameters, noiselevel);
+//		double loglike = out.transpose().mmul(alpha).get(0,0)*(-0.5);
+//		DoubleMatrix cova = computeCovMatrix(in, in, parameters);
+//		DoubleMatrix identity = DoubleMatrix.eye(in.rows);
+//		DoubleMatrix temp = cova.add(identity.mul(noiselevel));
+//		DoubleMatrix el = Decompose.cholesky(temp);
+//		for(int i = 0; i < el.rows; i++){
+//			loglike -= Math.log(el.get(i, i));
+//		}
+//		loglike -= (numTrain/2)*Math.log(2*Math.PI);
+//		
+//	    DoubleMatrix W = bSubstitutionWithTranspose(el,(fSubstitution(el,DoubleMatrix.eye(in.columns)))).sub(alpha.mmul(alpha.transpose()));     // precompute for convenience
+//
+//        for(int i=0; i<df0.rows; i++){
+//            df0.put(i,0,W.mul(covf.computeDerivatives(parameters, in, i)).sum()/2);
+//        }
+//        df0.print();
+//		return -loglike;
+//	}
 	public double negativeLogLikelihood(DoubleMatrix logtheta,DoubleMatrix x, DoubleMatrix y, DoubleMatrix df0) {
 
         int n = 1;// x.rows;

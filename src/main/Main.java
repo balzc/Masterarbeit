@@ -16,7 +16,7 @@ public class Main {
 		Periodic c2 = new Periodic();
 		int noData = 10;
 		double[] dataX = new double[noData];
-		double[] dataY =  new double[50];
+		double[] dataY =  new double[noData];
 		for(int i=0; i< dataX.length; i++){
 			dataX[i] = i;
 		}
@@ -25,14 +25,20 @@ public class Main {
 		}
 		double[] dataP = {0.1,0.7,0.5};
 		double[] dataTest = {11,12,13,14,15,16,17,18,19,20};
-		double nl = 10;
+		double nl = 2;
 		double noiselevel = nl;
 		DoubleMatrix X = new DoubleMatrix(dataX);
 		DoubleMatrix Y = new DoubleMatrix(dataY);
 		DoubleMatrix P = new DoubleMatrix(dataP);
 		DoubleMatrix testIn = new DoubleMatrix(dataTest);
-		GP gp = new GP(DoubleMatrix.ones(2).transpose(),DoubleMatrix.ones(2).transpose(),DoubleMatrix.ones(2).transpose(), new SquaredExponential(), 0.11);
-
+		GP gp = new GP(X, Y, testIn, P, c1, nl);
+		gp.setup();
+//		testOutMean.print();
+		DoubleMatrix cova = gp.computeCovMatrix(X, X, P);
+		HomeHeatingMDP hhmdp = new HomeHeatingMDP(DoubleMatrix.zeros(10, 1), cova, 1, 10);
+		hhmdp.work();
+		hhmdp.printOptPolicy();
+		hhmdp.printQvals();
 //		DoubleMatrix co = gp.computeCovMatrix(X, X, P);
 //		DoubleMatrix samples = gp.generateSamples(X, P, nl, gp.covf);
 //		printMatrix(samples);
@@ -56,7 +62,7 @@ public class Main {
 //			System.out.println();
 //		}
 //		testmdp.solveMDP(num);
-		gp.test();
+//		gp.test();
 	}
 	
 	

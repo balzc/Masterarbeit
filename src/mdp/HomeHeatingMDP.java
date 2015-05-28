@@ -6,50 +6,66 @@ import org.jblas.DoubleMatrix;
 import gp.GP;
 
 public class HomeHeatingMDP {
-	public int[][] optPolicy;
-	public double[][] expectedRewards;
-	public DoubleMatrix predMeanPrice;
-	public DoubleMatrix predCovPrice;
-	public DoubleMatrix predMeanInternalTemp;
-	public DoubleMatrix predCovInternalTemp;
-	public DoubleMatrix predMeanExternalTemp;
-	public DoubleMatrix predCovExternalTemp;
+	private int[][][][] optPolicy;
+	private double[][][][] qValues;
+	private double[][] expectedRewards;
+	private DoubleMatrix predMeanPrice;
+	private DoubleMatrix predCovPrice;
+	private DoubleMatrix predMeanInternalTemp;
+	private DoubleMatrix predCovInternalTemp;
+	private DoubleMatrix predMeanExternalTemp;
+	private DoubleMatrix predCovExternalTemp;
 	
-	public int[] actions;
-	public double[] prices;
-	public double[] internalTemp;
-	public double[] externalTemp;
-	public double deltaPrice;
-	public double deltaInternalTemp;
-	public double deltaExternalTemp;
-	public double powerOfHeater;
-	public double coefficientOfPerformance;
-	public double leakageRate;
-	public double massAir;
-	public double heatCapacity;
+	private int[] actions = {0,1};
+	private double[] prices;
+	private double[] internalTemp;
+	private double[] externalTemp;
+	private double deltaPrice;
+	private double deltaInternalTemp;
+	private double deltaExternalTemp;
+	private double minInternalTemp;
+	private double maxInternalTemp;
+	private double sdScale;
 	
-	public boolean PROFILING = false;
-	public double time;
-	public double[][][] priceProb;
-	public double[][][][] internalTempProb;
-	public double[][][] externalTempProb;
-	public int numSteps;
-	public double minp = 0;
-	public double maxp = 50;
-	public double[] rewards;
+	private double powerOfHeater;
+	private double coefficientOfPerformance;
+	private double leakageRate;
+	private double massAir;
+	private double heatCapacity;
+	
+	private boolean PROFILING = false;
+	private double time;
+	private double[][][] priceProb;
+	private double[][][][] internalTempProb;
+	private double[][][] externalTempProb;
+	private int numSteps;
+
+	private double[] rewards;
 	
 	
 	public HomeHeatingMDP(DoubleMatrix predMeanPrice, DoubleMatrix predCovPrice, double deltaPrice,
-			 int numSteps, double minprice, double maxprice) {
+			 int numSteps) {
 		super();
-		this.minp = minprice;
-		this.maxp = maxprice;
+		
+
 		this.predMeanPrice = predMeanPrice;
 		this.predCovPrice = predCovPrice;
 		this.deltaPrice = deltaPrice;
+		this.deltaExternalTemp = deltaPrice;
 		this.numSteps = numSteps;
+		this.predCovExternalTemp = predCovPrice;
+		this.predCovInternalTemp = predCovPrice;
+		this.predMeanExternalTemp = predMeanPrice;
+		this.predMeanInternalTemp = predMeanPrice;
 	}
-
+	
+	public void work(){
+		computePrices();
+		computeExternalTemp();
+		computeInternalTemp();
+		computeProbabilityTables();
+		solveMDP();
+	}
 
 	//probability table: priceProb[i][j][k] = Pr(prices[i] | prices[j], timestep=k)
 	public double computePriceProb(int i, int j, int k){
@@ -80,13 +96,91 @@ public class HomeHeatingMDP {
 
 		return 0.5*(Erf.erf( (y1-m)/(Math.sqrt(2)*s),(y2-m)/(Math.sqrt(2)*s)) );
 	}
+	public void computeInternalTemp(){
+		int numTemp = (int)(((maxInternalTemp - minInternalTemp))/(deltaExternalTemp))+1;
+		this.internalTemp = new double[numTemp];
+		for (int i = 0; i<numTemp; i++){
+			internalTemp[i] = minInternalTemp + i*deltaExternalTemp;
+		}
+	}
+
+	public void computeExternalTemp(){
+		double maxExternalTemp = findMaximumExternalTemp();
+		double minExternalTemp = findMinimumExternalTemp();
+
+		minExternalTemp = Math.floor((minExternalTemp/deltaExternalTemp + 0.5))*deltaExternalTemp;
+
+		int numTemp = (int)(((maxExternalTemp - minExternalTemp))/(deltaExternalTemp))+1;
+		this.externalTemp = new double[numTemp];
+		System.out.print("externalTemp ");
+
+		for (int i = 0; i<numTemp; i++){
+			externalTemp[i] = minExternalTemp + i*deltaExternalTemp;
+			System.out.print(externalTemp[i] + " ");
+		}
+		System.out.println();
+
+	}
+
+	public double findMaximumExternalTemp(){
+		double maxTemp = Double.MIN_VALUE;
+		double t;
+		for (int i = 0; i<predMeanExternalTemp.length; i++){
+			t = predMeanExternalTemp.get(i) + sdScale*Math.sqrt(predCovExternalTemp.get(i,i));
+			if(t > maxTemp){
+				maxTemp = t;
+			}
+		}
+		return maxTemp;
+	}
+
+	public double findMinimumExternalTemp(){
+		double minTemp = Double.MAX_VALUE;
+		double t;
+		for (int i = 0; i<predMeanExternalTemp.length; i++){
+			t = predMeanExternalTemp.get(i) - sdScale*Math.sqrt(predCovExternalTemp.get(i,i));
+			if(t < minTemp){
+				minTemp = t;
+			}
+		}
+		return minTemp;
+	}
+
 	public void computePrices(){
-		minp = Math.floor((minp/deltaPrice + 0.5))*deltaPrice;
-		int numPrice = (int)(((maxp - minp))/(deltaPrice))+1;
+		double minPrice = findMinimumPrice();
+		double maxPrice = findMaximumPrice();
+
+		minPrice = Math.floor((minPrice/deltaPrice + 0.5))*deltaPrice;
+
+		int numPrice = (int)(((maxPrice - minPrice))/(deltaPrice))+1;
 		this.prices = new double[numPrice];
 		for(int i = 0; i<numPrice; i++){
-			this.prices[i] = minp + i*deltaPrice;
+			this.prices[i] = minPrice + i*deltaPrice;
 		}
+	}
+
+	public double findMaximumPrice(){
+		double maxPrice = Double.MIN_VALUE;
+		double t;
+		for(int i = 0; i<predMeanPrice.length; i++){
+			t = predMeanPrice.get(i) + sdScale*Math.sqrt(predCovPrice.get(i,i));
+			if(t>maxPrice){
+				maxPrice = t;
+			}
+		}
+		return maxPrice;
+	}
+
+	public double findMinimumPrice(){
+		double minPrice = Double.MAX_VALUE;
+		double t;
+		for(int i = 0; i<predMeanPrice.length; i++){
+			t = predMeanPrice.get(i) - sdScale*Math.sqrt(predCovPrice.get(i,i));
+			if(t < minPrice){
+				minPrice = t;
+			}
+		}
+		return minPrice;
 	}
 	
 	public void computeRewards(){
@@ -96,6 +190,9 @@ public class HomeHeatingMDP {
 		}	
 	}
 	
+	public double rewards(double internalTemp, int action, double price){return 1;}
+	
+	
 	public void computeProbabilityTables(){
 		if(PROFILING){
 			time = System.nanoTime();
@@ -103,7 +200,7 @@ public class HomeHeatingMDP {
 		//priceProb[i][j][k] = Pr(price[i]| price[j], timestep = k+1)
 		this.priceProb = new double[prices.length][prices.length][numSteps-1];
 		//internalTempProb[i][j][k] = Pr(internalTemp[i] | internalTemp[j], externalTemp[k], actions[m])
-		this.internalTempProb = new double[internalTemp.length][internalTemp.length][externalTemp.length][2];
+		this.internalTempProb = new double[internalTemp.length][internalTemp.length][externalTemp.length][actions.length];
 		//externalTempProb[i][j][k] = Pr(exernalTemp[i] | externalTemp[j], timestep= k+1)
 		this.externalTempProb = new double[externalTemp.length][externalTemp.length][numSteps-1];
 
@@ -123,20 +220,24 @@ public class HomeHeatingMDP {
 			for(int j = 0; j<prices.length; j++){
 				for (int i = 0; i<prices.length; i++){
 					priceProb[i][j][k] /= normsPrice[k][j];
+					System.out.print(priceProb[i][j][k] + " ");
 				}
 			}
 		}
-
+		System.out.println();
 		//internal temp
 		for (int i = 0; i<internalTemp.length;i++){
 			for (int j = 0; j<internalTemp.length; j++){
 				for (int k = 0; k<externalTemp.length; k++){
 					for(int a = 0; a<actions.length; a++){
 						internalTempProb[i][j][k][a] = computeInternalTempProb(i, j, k, a);
+						System.out.print(internalTempProb[i][j][k][a] + " ");
+
 					}
 				}
 			}
 		}
+		System.out.println();
 
 		//external temp
 		double[][] normsTemp = new double[numSteps-1][externalTemp.length];
@@ -154,77 +255,88 @@ public class HomeHeatingMDP {
 			for(int j = 0; j<externalTemp.length; j++){
 				for (int i = 0; i<externalTemp.length; i++){
 					externalTempProb[i][j][k] /= normsTemp[k][j];
+					System.out.print(externalTempProb[i][j][k] + " ");
+
 				}
 			}
 		}
+		System.out.println();
+
 		if(PROFILING){
 			System.out.println("computeProbTables - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
 		}
 	}
 
+
+	public void solveMDP()
+	{	
+		qValues = new double[numSteps][prices.length][internalTemp.length][externalTemp.length];
+		optPolicy = new int[numSteps][prices.length][internalTemp.length][externalTemp.length];
+		for(int p = 0; p < prices.length; p++){
+			for(int it = 0; it < internalTemp.length; it++){
+				for(int et = 0; et < externalTemp.length; et++){
+					double maxReward = Double.NEGATIVE_INFINITY;
+					for(int a = 0; a < actions.length; a++){
+						double temp = rewards(it,a,p);
+						if(temp > maxReward){
+							qValues[numSteps-1][p][it][et] = temp;
+							maxReward = temp;
+						}
+					}
+
+				}
+			}
+		}
+
+		for(int t = numSteps-2; t >-1; t--){
+			for(int p = 0; p < prices.length; p++){
+				for(int it = 0; it < internalTemp.length; it++){
+					for(int et = 0; et < externalTemp.length; et++){
+						double currentMax = Double.NEGATIVE_INFINITY;
+						int currentBestAction = 0;
+						for(int a = 0; a < actions.length; a++){
+							double qval = rewards(it,a,p);
+							for(int pn = 0; pn < prices.length; pn++){
+								for(int itn = 0; itn < internalTemp.length; itn++){
+									for(int etn = 0; etn < externalTemp.length; etn++){
+										qval += internalTempProb[itn][it][et][a]*externalTempProb[etn][et][t]*priceProb[p][pn][t]*qValues[t+1][pn][itn][etn];
+									}
+								}
+							}
+
+							if(qval > currentMax){
+								currentMax = qval;
+								currentBestAction = a;
+								qValues[t][p][it][et] = qval;
+								optPolicy[t][p][it][et] = currentBestAction;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 	
-	public void solveMDP(int timesteps)
-	{
-		int states = priceProb.length;
-		double[][] expectedRewards = new double[states][timesteps];
-		int[][] policy = new int[states][timesteps];
-		for(int s = 0; s < states; s++){
-			expectedRewards[s][timesteps-1] = rewards[s];
-		}
-		for(int t = timesteps-2; t > -1; t--){
-			for(int s = 0; s < states; s++){
-				double maxReward = Double.NEGATIVE_INFINITY;
-				int bestAction = 0;
-//				System.out.println("state: " + s + " at timestep: " + t);
-
-				for(int o = 0; o < priceProb[s].length; o++){
-					double eReward = rewards[s];
-					for(int i = 0; i < priceProb[s][o].length; i++){
-						eReward += priceProb[s][o][i] * expectedRewards[i][t+1];
-//						System.out.println(priceProb[s][o][i] + " * " + expectedRewards[i][t+1] + " = "+eReward);
-
+	public void printOptPolicy(){
+		for(int t = numSteps-2; t >-1; t--){
+			for(int p = 0; p < prices.length; p++){
+				for(int it = 0; it < internalTemp.length; it++){
+					for(int et = 0; et < externalTemp.length; et++){
+						System.out.println(optPolicy[t][p][it][et] + " ");
 					}
-					if(maxReward < eReward){
-						maxReward = eReward;
-						bestAction = o;
-//						System.out.println("updated: " + maxReward);
+				}
+			}
+		}
+	}
+	public void printQvals(){
+		for(int t = numSteps-2; t >-1; t--){
+			for(int p = 0; p < prices.length; p++){
+				for(int it = 0; it < internalTemp.length; it++){
+					for(int et = 0; et < externalTemp.length; et++){
+						System.out.println(qValues[t][p][it][et] + " ");
 					}
-//					System.out.println("action: " + o + " done");
-
 				}
-				expectedRewards[s][t] = maxReward;
-				if(priceProb[s].length == 0){
-					expectedRewards[s][t] = rewards[s];//expectedRewards[s][t+1]*2; // if no action available keep reward
-				}
-				policy[s][t] = bestAction;
-//				System.out.println("state: " + s + " done");
-				
-
 			}
-//			System.out.println("timestep: " + t + " done");
-//			for(int i = 0; i < states; i++){
-//				System.out.print(i + ": " + expectedRewards[i][t]);
-//				System.out.println();
-//			}
-
-		}
-		optPolicy = policy;
-		this.expectedRewards = expectedRewards;
-		for(int i = 0; i < states; i++){
-			System.out.print(i + ": ");
-
-			for(int o = 0; o < timesteps; o++){
-				System.out.print(policy[i][o] + " ");
-			}
-			System.out.println();
-		}
-		for(int i = 0; i < states; i++){
-			System.out.print(i + ": ");
-
-			for(int o = 0; o < timesteps; o++){
-				System.out.print(expectedRewards[i][o] + " ");
-			}
-			System.out.println();
 		}
 	}
 }

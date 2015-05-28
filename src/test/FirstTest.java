@@ -9,4 +9,7 @@ public class FirstTest {
 	 * calculate utility
 	 * repeat with gathered data
 	 */
+	public static void doTest(){
+		
+	}
 }
