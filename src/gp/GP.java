@@ -25,6 +25,8 @@ public class GP {
 	private DoubleMatrix testCov;
 	private DoubleMatrix testTrainCov;
 	private DoubleMatrix predMean;
+
+
 	private DoubleMatrix predVar;
 	private double logLikelihood;
 	private DoubleMatrix parameters;
@@ -56,8 +58,8 @@ public class GP {
 		trainCov = computeCovMatrix(trainIn, trainIn, parameters);
 		testCov = computeCovMatrix(testIn, testIn, parameters);
 		testTrainCov = computeCovMatrix(trainIn, testIn, parameters);
-		alpha = computeAlpha();
 		l = computeL();
+		alpha = computeAlpha();
 		predMean = computeMean();
 		predVar = computeVariance();
 	}
@@ -142,18 +144,17 @@ public class GP {
 		DoubleMatrix identity = DoubleMatrix.eye(trainIn.rows);
 		DoubleMatrix temp = cova.add(identity.mul(noiselevel));
 		DoubleMatrix el = Decompose.cholesky(temp);
-	
 		return Solve.solve(el.transpose(), Solve.solve(el, trainOut));
 	}
 	
 	public DoubleMatrix computeL(){
 		DoubleMatrix identity = DoubleMatrix.eye(trainCov.rows);
 		DoubleMatrix temp = trainCov.add(identity.mul(noiselevel));
-		Main.printMatrix(temp);
 		DoubleMatrix el = Decompose.cholesky(temp);
 		return el;
 	}
 	
+
 	public DoubleMatrix computeMean(){
 		DoubleMatrix cova = computeCovMatrix(trainIn, testIn, parameters);
 		DoubleMatrix mean = cova.transpose().mmul(alpha);
@@ -582,4 +583,60 @@ public class GP {
         return new DoubleMatrix(x);
 
     }
+ 	public DoubleMatrix getPredMean() {
+		return predMean;
+	}
+
+	public void setPredMean(DoubleMatrix predMean) {
+		this.predMean = predMean;
+	}
+
+	public DoubleMatrix getPredVar() {
+		return predVar;
+	}
+
+	public void setPredVar(DoubleMatrix predVar) {
+		this.predVar = predVar;
+	}
+	
+	public DoubleMatrix getL() {
+		return l;
+	}
+
+	public void setL(DoubleMatrix l) {
+		this.l = l;
+	}
+
+	public DoubleMatrix getAlpha() {
+		return alpha;
+	}
+
+	public void setAlpha(DoubleMatrix alpha) {
+		this.alpha = alpha;
+	}
+
+	public DoubleMatrix getTrainCov() {
+		return trainCov;
+	}
+
+	public void setTrainCov(DoubleMatrix trainCov) {
+		this.trainCov = trainCov;
+	}
+
+	public DoubleMatrix getTestCov() {
+		return testCov;
+	}
+
+	public void setTestCov(DoubleMatrix testCov) {
+		this.testCov = testCov;
+	}
+
+	public DoubleMatrix getTestTrainCov() {
+		return testTrainCov;
+	}
+
+	public void setTestTrainCov(DoubleMatrix testTrainCov) {
+		this.testTrainCov = testTrainCov;
+	}
+
 }

@@ -21,48 +21,26 @@ public class Main {
 			dataX[i] = i;
 		}
 		for(int i=0; i< dataY.length; i++){
-			dataY[i] = Math.random();
+			dataY[i] = i;
 		}
-		double[] dataP = {0.1,0.7,0.5};
-		double[] dataTest = {11,12,13,14,15,16,17,18,19,20};
-		double nl = 2;
-		double noiselevel = nl;
+		double[] dataP = {1,2};
+		double[] dataTest = {11,12,13,14,15,16};
+		double nl = 0.5;		
 		DoubleMatrix X = new DoubleMatrix(dataX);
 		DoubleMatrix Y = new DoubleMatrix(dataY);
 		DoubleMatrix P = new DoubleMatrix(dataP);
 		DoubleMatrix testIn = new DoubleMatrix(dataTest);
 		GP gp = new GP(X, Y, testIn, P, c1, nl);
+		DoubleMatrix samples = gp.generateSamples(X, P, nl, c1);
 		gp.setup();
-//		testOutMean.print();
-		DoubleMatrix cova = gp.computeCovMatrix(X, X, P);
-		HomeHeatingMDP hhmdp = new HomeHeatingMDP(DoubleMatrix.zeros(10, 1), cova, 1, 10);
-		hhmdp.work();
-		hhmdp.printOptPolicy();
-		hhmdp.printQvals();
-//		DoubleMatrix co = gp.computeCovMatrix(X, X, P);
-//		DoubleMatrix samples = gp.generateSamples(X, P, nl, gp.covf);
-//		printMatrix(samples);
-//		printMatrix(X);
-//
-//		int num = 10;
-//		TestMDP testmdp = new TestMDP(DoubleMatrix.zeros(co.rows) , co.transpose(), 1, num,0,10);
-//		co.print();
-//		testmdp.computePrices();
-//		testmdp.computeProbabilityTables();
-//		testmdp.computeRewards();
-//		System.out.println(testmdp.priceProb.length);
-//		for(int i = 0; i < testmdp.priceProb.length; i++){
-//			System.out.print(i + ": ");
-//
-//			for(int o = 0; o < testmdp.priceProb[i].length; o++){
-//				for(int j = 0; j < testmdp.priceProb[i][o].length; j++){
-//					System.out.print(testmdp.priceProb[i][o][j] + " ");
-//				}
-//			}
-//			System.out.println();
-//		}
-//		testmdp.solveMDP(num);
-//		gp.test();
+
+		gp.getPredMean().print();
+		gp.getTestCov().print();
+		int num = 10;
+		HomeHeatingMDP testmdp = new HomeHeatingMDP(gp.getPredMean(),gp.getTestCov(),1,5);
+		testmdp.work();
+		testmdp.printOptPolicy();
+		testmdp.printQvals();
 	}
 	
 	

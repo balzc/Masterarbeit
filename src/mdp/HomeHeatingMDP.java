@@ -16,7 +16,7 @@ public class HomeHeatingMDP {
 	private DoubleMatrix predMeanExternalTemp;
 	private DoubleMatrix predCovExternalTemp;
 	
-	private int[] actions = {0,1};
+	private int[] actions = {0,1,2};
 	private double[] prices;
 	private double[] internalTemp;
 	private double[] externalTemp;
@@ -112,13 +112,10 @@ public class HomeHeatingMDP {
 
 		int numTemp = (int)(((maxExternalTemp - minExternalTemp))/(deltaExternalTemp))+1;
 		this.externalTemp = new double[numTemp];
-		System.out.print("externalTemp ");
 
 		for (int i = 0; i<numTemp; i++){
 			externalTemp[i] = minExternalTemp + i*deltaExternalTemp;
-			System.out.print(externalTemp[i] + " ");
 		}
-		System.out.println();
 
 	}
 
@@ -190,7 +187,7 @@ public class HomeHeatingMDP {
 		}	
 	}
 	
-	public double rewards(double internalTemp, int action, double price){return 1;}
+	public double rewards(double internalTemp, int action, double price){return Math.random();}
 	
 	
 	public void computeProbabilityTables(){
@@ -222,7 +219,10 @@ public class HomeHeatingMDP {
 					priceProb[i][j][k] /= normsPrice[k][j];
 					System.out.print(priceProb[i][j][k] + " ");
 				}
+				System.out.println();
 			}
+			System.out.println();
+
 		}
 		System.out.println();
 		//internal temp
@@ -234,8 +234,14 @@ public class HomeHeatingMDP {
 						System.out.print(internalTempProb[i][j][k][a] + " ");
 
 					}
+					System.out.println();
+
 				}
-			}
+				System.out.println();
+
+			}		
+			System.out.println();
+
 		}
 		System.out.println();
 
@@ -258,7 +264,11 @@ public class HomeHeatingMDP {
 					System.out.print(externalTempProb[i][j][k] + " ");
 
 				}
+				System.out.println();
+
 			}
+			System.out.println();
+
 		}
 		System.out.println();
 
@@ -322,10 +332,11 @@ public class HomeHeatingMDP {
 			for(int p = 0; p < prices.length; p++){
 				for(int it = 0; it < internalTemp.length; it++){
 					for(int et = 0; et < externalTemp.length; et++){
-						System.out.println(optPolicy[t][p][it][et] + " ");
+						System.out.print(optPolicy[t][p][it][et] + " ");
 					}
 				}
 			}
+			System.out.println();
 		}
 	}
 	public void printQvals(){
@@ -333,10 +344,11 @@ public class HomeHeatingMDP {
 			for(int p = 0; p < prices.length; p++){
 				for(int it = 0; it < internalTemp.length; it++){
 					for(int et = 0; et < externalTemp.length; et++){
-						System.out.println(qValues[t][p][it][et] + " ");
+						System.out.print(qValues[t][p][it][et] + " ");
 					}
 				}
 			}
+			System.out.println();
 		}
 	}
 }
