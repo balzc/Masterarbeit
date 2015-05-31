@@ -41,6 +41,7 @@ public class Main {
 		testmdp.work();
 		testmdp.printOptPolicy();
 		testmdp.printQvals();
+//		testmdp.printPrices();
 	}
 	
 	
