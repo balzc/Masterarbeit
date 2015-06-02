@@ -216,10 +216,9 @@ public class GP {
             for(int i=0; i<df0.rows; i++){
             	DoubleMatrix derivatives = covf.computeDerivatives(logtheta, x, i);
             	df0.put(i,0,(W.mul(derivatives)).sum()/2);
-//            	derivatives.print();
             }
-            df0.print();
-
+//            df0.print();
+//            System.out.println(lml);
             return -lml;
         }
     }
@@ -288,7 +287,7 @@ public class GP {
      * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
      * OTHER DEALINGS IN THE SOFTWARE.
      */
-    private DoubleMatrix minimize(DoubleMatrix params, int length, DoubleMatrix in, DoubleMatrix out){
+    public DoubleMatrix minimize(DoubleMatrix params, int length, DoubleMatrix in, DoubleMatrix out){
 
         double A, B;
         double x1, x2, x3, x4;

@@ -42,7 +42,7 @@ public class HomeHeatingMDP {
 	private double[][][] externalTempProb;
 	private int numSteps;
 
-	private double[] rewards;
+	double tol = 0.0001;
 	
 	
 	public HomeHeatingMDP(DoubleMatrix predMeanPrice, DoubleMatrix predCovPrice, double deltaPrice,
@@ -62,10 +62,14 @@ public class HomeHeatingMDP {
 		this.predMeanInternalTemp = predMeanPrice;
 		this.sdScale = 1;
 		this.sensitivity = 10;
-		this.powerOfHeater = 1;
+		this.powerOfHeater = 10;
 		this.prefTemp = 24;
 		this.maxInternalTemp = 36;
 		this.minInternalTemp = 0;
+		this.massAir = 10;
+		this.coefficientOfPerformance = 10;
+		this.leakageRate = 0.1;
+		this.heatCapacity = 10;
 	}
 	
 	public void work(){
@@ -110,7 +114,6 @@ public class HomeHeatingMDP {
 		this.internalTemp = new double[numTemp];
 		for (int i = 0; i<numTemp; i++){
 			internalTemp[i] = minInternalTemp + i*deltaExternalTemp;
-			System.out.println("internaltemp " + internalTemp[i]);
 		}
 	}
 
@@ -189,17 +192,74 @@ public class HomeHeatingMDP {
 		return minPrice;
 	}
 	
-	public void computeRewards(){
-		rewards = new double[priceProb[0].length];
-		for(int i = 0; i < rewards.length; i++){
-			rewards[i] = 1;
-		}	
-	}
-	
+
 	public double rewards(double internalTemp, int action, double price){
 		return maxInternalTemp - sensitivity*(prefTemp - internalTemp)*(prefTemp - internalTemp) - action*price*deltaInternalTemp*powerOfHeater/(1000.*3600.);
 	}
+
+	public int internalTempToState(double temp){
+		int index = -1;
+		double intTemp = roundToNextTemperature(temp, deltaInternalTemp);
+		for(int i = 0; i<internalTemp.length; i++){
+			if (Math.abs(internalTemp[i]-intTemp)<tol) {
+				index = i;
+				break;
+			}
+		}
+		return index;
+	}
+
+	public int externalTempToState(double temp){
+		int index = -1;
+		double intTemp = roundToNextTemperature(temp, deltaExternalTemp);
+		for(int i = 0; i<externalTemp.length; i++){
+			if (Math.abs(externalTemp[i]-intTemp)<tol) {
+				index = i;
+				break;
+			}
+		}
+		return index;
+	}
+
 	
+	public int priceToState(double price){
+		int index = -1;
+		double p = roundToNextPrice(price, deltaPrice);
+		for(int i = 0; i<prices.length; i++){
+			if (Math.abs(prices[i]-p)<tol) {
+				index = i;
+				break;
+			}
+		}
+		return index;
+	}
+
+	public int findInternalTempProb(int iTempOld, int eTemp, int action){
+		int index = -1;
+		for(int i = 0; i<internalTemp.length; i++){
+			if(Math.abs(internalTempProb[i][iTempOld][eTemp][action] - 1) < tol){
+				index = i;
+			}
+		}
+		return index;
+
+	}
+	
+
+	public double roundToNextTemperature(double temp, double delta){
+		return Math.floor((temp/delta + 0.5))*delta;
+	}
+	
+	public double roundToNextPrice(double price, double delta){
+		return Math.floor((price/delta + 0.5))*delta;
+	}
+	
+	
+	public double updateInternalTemperature(double internalTemp, double externalTemp, int heaterOn){
+		double Q = heaterOn*powerOfHeater*coefficientOfPerformance - leakageRate*(internalTemp - externalTemp);
+		System.out.println(Q);
+		return internalTemp + Q*deltaInternalTemp/(massAir*heatCapacity);
+	}
 	
 	public void computeProbabilityTables(){
 		if(PROFILING){
@@ -369,4 +429,264 @@ public class HomeHeatingMDP {
 		System.out.println();
 
 	}
+
+	
+	
+	public int[][][][] getOptPolicy() {
+		return optPolicy;
+	}
+
+	public void setOptPolicy(int[][][][] optPolicy) {
+		this.optPolicy = optPolicy;
+	}
+
+	public double[][][][] getqValues() {
+		return qValues;
+	}
+
+	public void setqValues(double[][][][] qValues) {
+		this.qValues = qValues;
+	}
+
+	public double[][] getExpectedRewards() {
+		return expectedRewards;
+	}
+
+	public void setExpectedRewards(double[][] expectedRewards) {
+		this.expectedRewards = expectedRewards;
+	}
+
+	public DoubleMatrix getPredMeanPrice() {
+		return predMeanPrice;
+	}
+
+	public void setPredMeanPrice(DoubleMatrix predMeanPrice) {
+		this.predMeanPrice = predMeanPrice;
+	}
+
+	public DoubleMatrix getPredCovPrice() {
+		return predCovPrice;
+	}
+
+	public void setPredCovPrice(DoubleMatrix predCovPrice) {
+		this.predCovPrice = predCovPrice;
+	}
+
+	public DoubleMatrix getPredMeanInternalTemp() {
+		return predMeanInternalTemp;
+	}
+
+	public void setPredMeanInternalTemp(DoubleMatrix predMeanInternalTemp) {
+		this.predMeanInternalTemp = predMeanInternalTemp;
+	}
+
+	public DoubleMatrix getPredCovInternalTemp() {
+		return predCovInternalTemp;
+	}
+
+	public void setPredCovInternalTemp(DoubleMatrix predCovInternalTemp) {
+		this.predCovInternalTemp = predCovInternalTemp;
+	}
+
+	public DoubleMatrix getPredMeanExternalTemp() {
+		return predMeanExternalTemp;
+	}
+
+	public void setPredMeanExternalTemp(DoubleMatrix predMeanExternalTemp) {
+		this.predMeanExternalTemp = predMeanExternalTemp;
+	}
+
+	public DoubleMatrix getPredCovExternalTemp() {
+		return predCovExternalTemp;
+	}
+
+	public void setPredCovExternalTemp(DoubleMatrix predCovExternalTemp) {
+		this.predCovExternalTemp = predCovExternalTemp;
+	}
+
+	public int[] getActions() {
+		return actions;
+	}
+
+	public void setActions(int[] actions) {
+		this.actions = actions;
+	}
+
+	public double[] getPrices() {
+		return prices;
+	}
+
+	public void setPrices(double[] prices) {
+		this.prices = prices;
+	}
+
+	public double[] getInternalTemp() {
+		return internalTemp;
+	}
+
+	public void setInternalTemp(double[] internalTemp) {
+		this.internalTemp = internalTemp;
+	}
+
+	public double[] getExternalTemp() {
+		return externalTemp;
+	}
+
+	public void setExternalTemp(double[] externalTemp) {
+		this.externalTemp = externalTemp;
+	}
+
+	public double getDeltaPrice() {
+		return deltaPrice;
+	}
+
+	public void setDeltaPrice(double deltaPrice) {
+		this.deltaPrice = deltaPrice;
+	}
+
+	public double getDeltaInternalTemp() {
+		return deltaInternalTemp;
+	}
+
+	public void setDeltaInternalTemp(double deltaInternalTemp) {
+		this.deltaInternalTemp = deltaInternalTemp;
+	}
+
+	public double getDeltaExternalTemp() {
+		return deltaExternalTemp;
+	}
+
+	public void setDeltaExternalTemp(double deltaExternalTemp) {
+		this.deltaExternalTemp = deltaExternalTemp;
+	}
+
+	public double getMinInternalTemp() {
+		return minInternalTemp;
+	}
+
+	public void setMinInternalTemp(double minInternalTemp) {
+		this.minInternalTemp = minInternalTemp;
+	}
+
+	public double getMaxInternalTemp() {
+		return maxInternalTemp;
+	}
+
+	public void setMaxInternalTemp(double maxInternalTemp) {
+		this.maxInternalTemp = maxInternalTemp;
+	}
+
+	public double getSdScale() {
+		return sdScale;
+	}
+
+	public void setSdScale(double sdScale) {
+		this.sdScale = sdScale;
+	}
+
+	public double getPrefTemp() {
+		return prefTemp;
+	}
+
+	public void setPrefTemp(double prefTemp) {
+		this.prefTemp = prefTemp;
+	}
+
+	public double getSensitivity() {
+		return sensitivity;
+	}
+
+	public void setSensitivity(double sensitivity) {
+		this.sensitivity = sensitivity;
+	}
+
+	public double getPowerOfHeater() {
+		return powerOfHeater;
+	}
+
+	public void setPowerOfHeater(double powerOfHeater) {
+		this.powerOfHeater = powerOfHeater;
+	}
+
+	public double getCoefficientOfPerformance() {
+		return coefficientOfPerformance;
+	}
+
+	public void setCoefficientOfPerformance(double coefficientOfPerformance) {
+		this.coefficientOfPerformance = coefficientOfPerformance;
+	}
+
+	public double getLeakageRate() {
+		return leakageRate;
+	}
+
+	public void setLeakageRate(double leakageRate) {
+		this.leakageRate = leakageRate;
+	}
+
+	public double getMassAir() {
+		return massAir;
+	}
+
+	public void setMassAir(double massAir) {
+		this.massAir = massAir;
+	}
+
+	public double getHeatCapacity() {
+		return heatCapacity;
+	}
+
+	public void setHeatCapacity(double heatCapacity) {
+		this.heatCapacity = heatCapacity;
+	}
+
+	public boolean isPROFILING() {
+		return PROFILING;
+	}
+
+	public void setPROFILING(boolean pROFILING) {
+		PROFILING = pROFILING;
+	}
+
+	public double getTime() {
+		return time;
+	}
+
+	public void setTime(double time) {
+		this.time = time;
+	}
+
+	public double[][][] getPriceProb() {
+		return priceProb;
+	}
+
+	public void setPriceProb(double[][][] priceProb) {
+		this.priceProb = priceProb;
+	}
+
+	public double[][][][] getInternalTempProb() {
+		return internalTempProb;
+	}
+
+	public void setInternalTempProb(double[][][][] internalTempProb) {
+		this.internalTempProb = internalTempProb;
+	}
+
+	public double[][][] getExternalTempProb() {
+		return externalTempProb;
+	}
+
+	public void setExternalTempProb(double[][][] externalTempProb) {
+		this.externalTempProb = externalTempProb;
+	}
+
+	public int getNumSteps() {
+		return numSteps;
+	}
+
+	public void setNumSteps(int numSteps) {
+		this.numSteps = numSteps;
+	}
+
+
 }
