@@ -11,10 +11,7 @@ public abstract class CovarianceFunction {
 		this.parameters = parameters;
 		return x;
 	}
-	public double computeCovariance(DoubleMatrix x, DoubleMatrix xstar, DoubleMatrix parameters){
-		this.parameters = parameters;
-		return x.distance2(xstar);
-	}
+	public abstract double computeCovariance(DoubleMatrix x, DoubleMatrix xstar, DoubleMatrix parameters);
 	public double computeCovariance(double x,  double[] parameters){
 		
 		return x;
@@ -25,13 +22,8 @@ public abstract class CovarianceFunction {
 	public double noise(int index1, int index2, double sn){
 		return index1==index2 ? sn*sn : 0;
 	}
-	public DoubleMatrix computeDerivatives(DoubleMatrix loghyper, DoubleMatrix X, int index) {
-		return loghyper;
-	}
-	
-	public DoubleMatrix computeSingleValue(DoubleMatrix loghyper, DoubleMatrix X){
-		return X;
-	}
+	public abstract DoubleMatrix computeDerivatives(DoubleMatrix loghyper, DoubleMatrix X, int index);
+	public abstract DoubleMatrix computeSingleValue(DoubleMatrix loghyper, DoubleMatrix X);
 	
 	public static DoubleMatrix exp(DoubleMatrix A){
 

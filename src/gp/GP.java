@@ -239,7 +239,7 @@ public class GP {
 		DoubleMatrix smallId = DoubleMatrix.eye(k.columns).mul(small);
 		k = k.add(smallId);
 		DoubleMatrix l = Decompose.cholesky(k);
-		DoubleMatrix u = DoubleMatrix.randn(k.columns);
+		DoubleMatrix u = DoubleMatrix.ones(k.columns);//DoubleMatrix.randn(k.columns);
 		DoubleMatrix y = l.transpose().mmul(u);
 		return y;
 	}

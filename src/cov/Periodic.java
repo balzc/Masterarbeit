@@ -13,15 +13,20 @@ public class Periodic extends CovarianceFunction{
 
 	public double computeCovariance(double x, double xstar, DoubleMatrix parameters){
 		this.parameters = parameters;
-		double d = x-xstar;
+
+		double d = Math.abs(x-xstar);
 		d = Math.sin(Math.PI*d);
 		return Math.exp(-2*d*d/parameters.get(0));
 
 	}
 	public double computeCovariance(DoubleMatrix x, DoubleMatrix xstar, DoubleMatrix parameters){
 		this.parameters = parameters;
-		double d = x.get(0)-xstar.get(0);
+
+		double d = Math.abs(x.get(0)-xstar.get(0));
+
 		double sin = Math.sin(Math.PI*d);
+
+
 		return Math.exp(-2*sin*sin/parameters.get(0)*parameters.get(0));
 	}
 

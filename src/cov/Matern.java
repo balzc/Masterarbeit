@@ -11,17 +11,18 @@ public class Matern extends CovarianceFunction{
 	public int getNumParams(){return numParams;}
 	public double computeCovariance(double x, double xstar, DoubleMatrix parameters){
 		this.parameters = parameters;
-		double d = x-xstar;
+		double d = Math.abs(x-xstar);
 		double c = Math.exp((-d*Math.sqrt(3))/parameters.get(2));
-		double f = parameters.get(0)*(1+(d*Math.sqrt(3))/parameters.get(1))*c;
+		double f = parameters.get(0)*parameters.get(0)*(1+(d*Math.sqrt(3))/parameters.get(1))*c;
 		return f;
 
 	}
 	public double computeCovariance(DoubleMatrix x, DoubleMatrix xstar, DoubleMatrix parameters){
 		this.parameters = parameters;
-		double d = x.get(0)-xstar.get(0);
+
+		double d = Math.abs(x.get(0)-xstar.get(0));
 		double c = Math.exp((-d*Math.sqrt(3))/parameters.get(2));
-		double f = parameters.get(0)*(1+(d*Math.sqrt(3))/parameters.get(1))*c;
+		double f = parameters.get(0)*parameters.get(0)*(1+(d*Math.sqrt(3))/parameters.get(1))*c;
 		return f;
 	}
 
@@ -29,7 +30,7 @@ public class Matern extends CovarianceFunction{
 		if(parameters.columns!=1 || parameters.rows!=numParams)
 			throw new IllegalArgumentException("Wrong number of hyperparameters, "+parameters.rows+" instead of "+numParams);
 		DoubleMatrix distance = dist(X);
-		DoubleMatrix A = exp(distance.mul(Math.sqrt(3)/parameters.get(2))).mmul(distance.mul(Math.sqrt(3)/parameters.get(1)).add(1)).mul(parameters.get(0));
+		DoubleMatrix A = exp(distance.mul(Math.sqrt(3)/parameters.get(2))).mmul(distance.mul(Math.sqrt(3)/parameters.get(1)).add(1)).mul(parameters.get(0)*parameters.get(0));
 		return A;
 	}
 
@@ -46,9 +47,9 @@ public class Matern extends CovarianceFunction{
 		if(index == 0){
 			A = exp(distance.mul(-Math.sqrt(3)/parameters.get(2))).mmul(distance.mul(Math.sqrt(3)/parameters.get(1)).add(1));
 		} else if(index == 1){
-			A = exp(distance.mul(-Math.sqrt(3)/parameters.get(2))).mmul(distance.mul(-Math.sqrt(3)/parameters.get(1)*parameters.get(1))).mul(parameters.get(0));
+			A = exp(distance.mul(-Math.sqrt(3)/parameters.get(2))).mmul(distance.mul(-Math.sqrt(3)/parameters.get(1)*parameters.get(1))).mul(parameters.get(0)*parameters.get(0));
 		} else {
-			A = distance.mul(Math.sqrt(3)/parameters.get(2)*parameters.get(2)).add(distance.mmul(distance).mul(3/parameters.get(2)*parameters.get(2)*parameters.get(2))).mul(parameters.get(0)).mmul(exp(distance.mul(-Math.sqrt(3)/parameters.get(2))));
+			A = distance.mul(Math.sqrt(3)/parameters.get(2)*parameters.get(2)).add(distance.mmul(distance).mul(3/parameters.get(2)*parameters.get(2)*parameters.get(2))).mul(parameters.get(0)*parameters.get(0)).mmul(exp(distance.mul(-Math.sqrt(3)/parameters.get(2))));
 		}
 		
 		return A;

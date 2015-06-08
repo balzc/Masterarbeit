@@ -1,15 +1,12 @@
 package cov;
 
-
-
 import org.jblas.DoubleMatrix;
 
-
-public class SquaredExponential extends CovarianceFunction{
+public class Crosscorrelation extends CovarianceFunction{
 	public DoubleMatrix parameters;
 	public int numParams;
-	public SquaredExponential(){
-		numParams = 2;
+	public Crosscorrelation(){
+		numParams = 1;
 	}
 	public int getNumParams(){return numParams;}
 	public double computeCovariance(double x, double xstar, DoubleMatrix parameters){
@@ -20,7 +17,6 @@ public class SquaredExponential extends CovarianceFunction{
 	}
 	public double computeCovariance(DoubleMatrix x, DoubleMatrix xstar, DoubleMatrix parameters){
 		this.parameters = parameters;
-
 		double d = x.distance2(xstar);
 		return parameters.get(0)*parameters.get(0) *Math.exp(- 1/(2 * parameters.get(1)*parameters.get(1)) * d*d);
 	}
