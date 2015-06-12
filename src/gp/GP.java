@@ -33,16 +33,15 @@ public class GP {
 	private int numTest;
 	private int numTrain;
 	
-	public GP(DoubleMatrix trainInput,DoubleMatrix trainOutput, DoubleMatrix testInput, DoubleMatrix parameters, CovarianceFunction cf, double noisel){
+	public GP(DoubleMatrix trainInput, DoubleMatrix testInput, DoubleMatrix parameters, CovarianceFunction cf, double noisel){
 		this.noiselevel = noisel;
 		this.trainIn = trainInput;
 		this.testIn = testInput;
-		this.trainOut = trainOutput;
 		this.covf = cf;
 		this.numTest = this.testIn.columns;
 		this.numTrain = this.trainIn.columns;
 		this.parameters = parameters;
-		
+	
 //		
 //		
 //		DoubleMatrix beta = Solve.pinv(l).mmul(Solve.pinv(l).mmul(trainOut.transpose()));
@@ -54,7 +53,8 @@ public class GP {
 		
 	}
 	
-	public void setup(){
+	public void setup(DoubleMatrix trainOut){
+		this.trainOut = trainOut;
 		trainCov = computeCovMatrix(trainIn, trainIn, parameters);
 		testCov = computeCovMatrix(testIn, testIn, parameters);
 		testTrainCov = computeCovMatrix(trainIn, testIn, parameters);
@@ -65,79 +65,7 @@ public class GP {
 	}
 	
 	
-	public void test(){
-		int noData = 1000;
-		double[] dataX = new double[noData];
-		double[] dataY =  new double[noData];
-		for(int i=0; i< dataX.length; i++){
-			dataX[i] = i;
-			dataY[i] = Math.random();
-		}
-		double[] dataP = {0.5,0.5};
-		double[] dataTest = {11,12,13,14,15,16};
-		double nl = 0;
-		noiselevel = nl;
-		DoubleMatrix X = new DoubleMatrix(dataX);
-		DoubleMatrix Y = new DoubleMatrix(dataY);
-		DoubleMatrix P = new DoubleMatrix(dataP);
-//		DoubleMatrix testIn = new DoubleMatrix(dataTest);
-//		DoubleMatrix co = computeCovMatrix(X, X, P);
-//		co.print();
-		DoubleMatrix samples = generateSamples(X, P, nl, covf);
-//		String dest = "/Users/Balz/Downloads/test.csv";
-//		samples.print();
-//		FileHandler.matrixToCsv(samples, dest);
-//		DoubleMatrix tsamples = FileHandler.csvToMatrix(dest);
-//		samples.print();
-		System.out.print("[");
-		for(int i = 0; i<noData; i++){
-			System.out.print(Y.get(i)+ "; ");
-
-		}
-		System.out.println("]");
-		System.out.print("[");
-
-		for(int i = 0; i<noData; i++){
-			System.out.print(X.get(i)+ "; ");
-
-		}
-		System.out.println("]");
-		System.out.print("[");
-
-		for(int i = 0; i<noData; i++){
-			System.out.print(samples.get(i)+ "; ");
-
-		}
-		System.out.println("]");
-		DoubleMatrix params = minimize(P, -100, X, samples);
-		params.print();
-//		samples.print();
-//		int noruns = 20;
-//		DoubleMatrix[] params = new DoubleMatrix[noruns];
-//		double maxloglike = -9999999;
-//		int maxrun = 0;
-//		double[] loglikelies = new double[noruns];
-//		for(int i = 0; i < noruns; i++){
-//			double p1 = Math.random();
-//			double p2 = Math.random();
-//			DoubleMatrix ps = new DoubleMatrix(new double[] {p1,p2});
-//			System.out.println("run: " + i);
-//			ps.print();
-//			params[i] = minimize(ps,100,X, samples);
-//			params[i].print();
-//			loglikelies[i] = negativeLogLikelihood(params[i], X, samples, new DoubleMatrix(new double[] {1,2}));
-//			if(loglikelies[i] > maxloglike){
-//				maxloglike = loglikelies[i];
-//				maxrun = i;
-//			}
-//		}
-//		System.out.println(loglikelies[maxrun]);
-//		params[maxrun].print();
-//		double[][] param = OptimizeHyperparameters.optimizeParams(X.transpose(), samples.transpose(), covf, 2, false, nl);
-//		System.out.println(param[0][0]);
-//		System.out.println(param[0][1]);
-
-	}
+	
 	
 	public DoubleMatrix computeAlpha(){
 		DoubleMatrix cova = computeCovMatrix(trainIn, trainIn,parameters);
@@ -157,7 +85,10 @@ public class GP {
 
 	public DoubleMatrix computeMean(){
 		DoubleMatrix cova = computeCovMatrix(trainIn, testIn, parameters);
-		DoubleMatrix mean = cova.transpose().mmul(alpha);
+		DoubleMatrix identity = DoubleMatrix.eye(trainCov.rows);
+		DoubleMatrix temp = trainCov.add(identity.mul(noiselevel));
+		DoubleMatrix covInv = Solve.solvePositive(temp, identity);
+		DoubleMatrix mean = cova.transpose().mmul(covInv).mmul(trainOut);//cova.transpose().mmul(alpha);
 		return mean;
 	}
 	public DoubleMatrix computeVariance(){
@@ -227,6 +158,9 @@ public class GP {
 		DoubleMatrix result = new DoubleMatrix(k.rows,kstar.rows);
 		for(int i = 0; i<k.rows; i++){
 			for(int j = 0; j<kstar.rows; j++){
+//				System.out.println("i: " + i + " j: " + j);
+//				k.getRow(i).print();
+//				kstar.getRow(j).print();
 				result.put(i, j, covf.computeCovariance(k.getRow(i), kstar.getRow(j), parameters));
 			}
 		}
@@ -235,12 +169,14 @@ public class GP {
 
 	
 	public DoubleMatrix generateSamples(DoubleMatrix in, DoubleMatrix parameters, double small, CovarianceFunction covf){
+
 		DoubleMatrix k = computeCovMatrix(in, in, parameters);
 		DoubleMatrix smallId = DoubleMatrix.eye(k.columns).mul(small);
 		k = k.add(smallId);
 		DoubleMatrix l = Decompose.cholesky(k);
-		DoubleMatrix u = DoubleMatrix.ones(k.columns);//DoubleMatrix.randn(k.columns);
+		DoubleMatrix u = DoubleMatrix.randn(k.columns);//DoubleMatrix.ones(k.columns);
 		DoubleMatrix y = l.transpose().mmul(u);
+
 		return y;
 	}
 	
@@ -582,6 +518,82 @@ public class GP {
         return new DoubleMatrix(x);
 
     }
+     
+     public void test(){
+ 		int noData = 1000;
+ 		double[] dataX = new double[noData];
+ 		double[] dataY =  new double[noData];
+ 		for(int i=0; i< dataX.length; i++){
+ 			dataX[i] = i;
+ 			dataY[i] = Math.random();
+ 		}
+ 		double[] dataP = {0.5,0.5};
+ 		double[] dataTest = {11,12,13,14,15,16};
+ 		double nl = 0;
+ 		noiselevel = nl;
+ 		DoubleMatrix X = new DoubleMatrix(dataX);
+ 		DoubleMatrix Y = new DoubleMatrix(dataY);
+ 		DoubleMatrix P = new DoubleMatrix(dataP);
+// 		DoubleMatrix testIn = new DoubleMatrix(dataTest);
+// 		DoubleMatrix co = computeCovMatrix(X, X, P);
+// 		co.print();
+ 		DoubleMatrix samples = generateSamples(X, P, nl, covf);
+// 		String dest = "/Users/Balz/Downloads/test.csv";
+// 		samples.print();
+// 		FileHandler.matrixToCsv(samples, dest);
+// 		DoubleMatrix tsamples = FileHandler.csvToMatrix(dest);
+// 		samples.print();
+ 		System.out.print("[");
+ 		for(int i = 0; i<noData; i++){
+ 			System.out.print(Y.get(i)+ "; ");
+
+ 		}
+ 		System.out.println("]");
+ 		System.out.print("[");
+
+ 		for(int i = 0; i<noData; i++){
+ 			System.out.print(X.get(i)+ "; ");
+
+ 		}
+ 		System.out.println("]");
+ 		System.out.print("[");
+
+ 		for(int i = 0; i<noData; i++){
+ 			System.out.print(samples.get(i)+ "; ");
+
+ 		}
+ 		System.out.println("]");
+ 		DoubleMatrix params = minimize(P, -100, X, samples);
+ 		params.print();
+// 		samples.print();
+// 		int noruns = 20;
+// 		DoubleMatrix[] params = new DoubleMatrix[noruns];
+// 		double maxloglike = -9999999;
+// 		int maxrun = 0;
+// 		double[] loglikelies = new double[noruns];
+// 		for(int i = 0; i < noruns; i++){
+// 			double p1 = Math.random();
+// 			double p2 = Math.random();
+// 			DoubleMatrix ps = new DoubleMatrix(new double[] {p1,p2});
+// 			System.out.println("run: " + i);
+// 			ps.print();
+// 			params[i] = minimize(ps,100,X, samples);
+// 			params[i].print();
+// 			loglikelies[i] = negativeLogLikelihood(params[i], X, samples, new DoubleMatrix(new double[] {1,2}));
+// 			if(loglikelies[i] > maxloglike){
+// 				maxloglike = loglikelies[i];
+// 				maxrun = i;
+// 			}
+// 		}
+// 		System.out.println(loglikelies[maxrun]);
+// 		params[maxrun].print();
+// 		double[][] param = OptimizeHyperparameters.optimizeParams(X.transpose(), samples.transpose(), covf, 2, false, nl);
+// 		System.out.println(param[0][0]);
+// 		System.out.println(param[0][1]);
+
+ 	}
+     
+     
  	public DoubleMatrix getPredMean() {
 		return predMean;
 	}
@@ -636,6 +648,38 @@ public class GP {
 
 	public void setTestTrainCov(DoubleMatrix testTrainCov) {
 		this.testTrainCov = testTrainCov;
+	}
+
+	public DoubleMatrix getTrainIn() {
+		return trainIn;
+	}
+
+	public void setTrainIn(DoubleMatrix trainIn) {
+		this.trainIn = trainIn;
+	}
+
+	public DoubleMatrix getTestIn() {
+		return testIn;
+	}
+
+	public void setTestIn(DoubleMatrix testIn) {
+		this.testIn = testIn;
+	}
+
+	public DoubleMatrix getTrainOut() {
+		return trainOut;
+	}
+
+	public void setTrainOut(DoubleMatrix trainOut) {
+		this.trainOut = trainOut;
+	}
+
+	public DoubleMatrix getTestOut() {
+		return testOut;
+	}
+
+	public void setTestOut(DoubleMatrix testOut) {
+		this.testOut = testOut;
 	}
 
 }

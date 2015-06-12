@@ -53,8 +53,8 @@ public class HomeHeatingMDP {
 		this.predMeanPrice = predMeanPrice;
 		this.predCovPrice = predCovPrice;
 		this.deltaPrice = deltaPrice;
-		this.deltaExternalTemp = 0.5;
-		this.deltaInternalTemp = 696;
+		this.deltaExternalTemp = 1;
+		this.deltaInternalTemp = 1;
 		this.numSteps = numSteps;
 		this.predCovExternalTemp = predCovExternalTemp;// predCovPrice;
 		this.predCovInternalTemp = predCovExternalTemp;
@@ -66,24 +66,19 @@ public class HomeHeatingMDP {
 		this.prefTemp = 25;
 		this.maxInternalTemp = 25;
 		this.minInternalTemp = 15;
-		this.massAir = 1205;
+		this.massAir = 1205;//1205;
 		this.coefficientOfPerformance = 2.5;
 		this.leakageRate = 90;
-		this.heatCapacity = 1000;
+		this.heatCapacity = 1000;//1000;
 	}
 	
 	public void work(){
 		computePrices();
-		System.out.println("1");
 		computeExternalTemp();
-		System.out.println("2");
 
 		computeInternalTemp();
-		System.out.println("3");
-
+		
 		computeProbabilityTables();
-		System.out.println("4");
-
 		solveMDP();
 	}
 
@@ -98,9 +93,7 @@ public class HomeHeatingMDP {
 	}
 	public double computeInternalTempProb(int i, int j, int k,int m){
 		double Q = actions[m]*powerOfHeater*coefficientOfPerformance - leakageRate*(internalTemp[j] - externalTemp[k]);
-		System.out.println("Q: "+ Q);
 		double temp = internalTemp[j] + Q*deltaInternalTemp/(massAir*heatCapacity);
-		System.out.println("temp: "+temp);
 
 		double prob = Math.abs(temp-internalTemp[i])*2. < deltaExternalTemp? 1 : 0;
 		return prob;
@@ -210,6 +203,7 @@ public class HomeHeatingMDP {
 		int index = -1;
 		double intTemp = roundToNextTemperature(temp, deltaInternalTemp);
 		for(int i = 0; i<internalTemp.length; i++){
+
 			if (Math.abs(internalTemp[i]-intTemp)<tol) {
 				index = i;
 				break;
@@ -266,6 +260,7 @@ public class HomeHeatingMDP {
 	
 	public double updateInternalTemperature(double internalTemp, double externalTemp, int heaterOn){
 		double Q = heaterOn*powerOfHeater*coefficientOfPerformance - leakageRate*(internalTemp - externalTemp);
+		System.out.println(Q);
 		return internalTemp + Q*deltaInternalTemp/(massAir*heatCapacity);
 	}
 	
