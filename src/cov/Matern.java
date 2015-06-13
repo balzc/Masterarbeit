@@ -19,6 +19,7 @@ public class Matern extends CovarianceFunction{
 	}
 	public double computeCovariance(DoubleMatrix x, DoubleMatrix xstar, DoubleMatrix parameters){
 		this.parameters = parameters;
+//		System.out.println("Mat: " + parameters.get(0) + " " + parameters.get(1)+ " " + parameters.get(2));
 
 		double d = Math.abs(x.get(0)-xstar.get(0));
 		double c = Math.exp((-d*Math.sqrt(3))/parameters.get(2));

@@ -15,16 +15,17 @@ public class SquaredExponential extends CovarianceFunction{
 	public double computeCovariance(double x, double xstar, DoubleMatrix parameters){
 		this.parameters = parameters;
 		double d = (x-xstar)*(x-xstar);
-		return parameters.get(0)*parameters.get(0) *Math.exp(- 1/(2 * parameters.get(1)*parameters.get(1)) * d*d);
+		return parameters.get(0) *parameters.get(0) *Math.exp(- 1/(2 * parameters.get(1)*parameters.get(1)) * d*d);
 
 	}
 	public double computeCovariance(DoubleMatrix x, DoubleMatrix xstar, DoubleMatrix parameters){
 		this.parameters = parameters;
+//		System.out.println("SE: " + parameters.get(0) + " " + parameters.get(1));
 
 		double d = x.distance2(xstar);
-		return parameters.get(0)*parameters.get(0) *Math.exp(- 1/(2 * parameters.get(1)*parameters.get(1)) * d*d);
+		return parameters.get(0) * parameters.get(0) *Math.exp(- 1/(2 * parameters.get(1)*parameters.get(1)) * d*d);
 	}
-
+	// Old
 	public DoubleMatrix computeSingleValue(DoubleMatrix loghyper, DoubleMatrix X){
 		if(loghyper.columns!=1 || loghyper.rows!=numParams)
 			throw new IllegalArgumentException("Wrong number of hyperparameters, "+loghyper.rows+" instead of "+numParams);
@@ -36,7 +37,7 @@ public class SquaredExponential extends CovarianceFunction{
 		K = K.mul(K);
 		return K;
 	}
-
+	// Old
 	public DoubleMatrix computeDerivatives(DoubleMatrix parameters, DoubleMatrix X, int index) {
 
 		if(parameters.columns!=1 || parameters.rows!=numParams)

@@ -58,8 +58,8 @@ public class GP {
 		trainCov = computeCovMatrix(trainIn, trainIn, parameters);
 		testCov = computeCovMatrix(testIn, testIn, parameters);
 		testTrainCov = computeCovMatrix(trainIn, testIn, parameters);
-		l = computeL();
-		alpha = computeAlpha();
+//		l = computeL();
+//		alpha = computeAlpha();
 		predMean = computeMean();
 		predVar = computeVariance();
 	}
@@ -86,16 +86,18 @@ public class GP {
 	public DoubleMatrix computeMean(){
 		DoubleMatrix cova = computeCovMatrix(trainIn, testIn, parameters);
 		DoubleMatrix identity = DoubleMatrix.eye(trainCov.rows);
-		DoubleMatrix temp = trainCov.add(identity.mul(noiselevel));
+		DoubleMatrix temp = trainCov;//.add(identity.mul(noiselevel));
 		DoubleMatrix covInv = Solve.solvePositive(temp, identity);
 		DoubleMatrix mean = cova.transpose().mmul(covInv).mmul(trainOut);//cova.transpose().mmul(alpha);
 		return mean;
 	}
 	public DoubleMatrix computeVariance(){
-		DoubleMatrix covaTrainTest = computeCovMatrix(trainIn, testIn, parameters);
-		DoubleMatrix v = Solve.solve(l, covaTrainTest);
-		DoubleMatrix covaTest = computeCovMatrix(testIn, testIn, parameters);
-		DoubleMatrix variance = covaTest.sub(v.transpose().mmul(v));
+		DoubleMatrix identity = DoubleMatrix.eye(trainCov.rows);
+		DoubleMatrix temp = trainCov;//.add(identity.mul(noiselevel));
+		DoubleMatrix covInv = Solve.solvePositive(temp, identity);
+		DoubleMatrix t = testTrainCov.transpose().mmul(covInv);
+		DoubleMatrix c = t.mmul(testTrainCov);
+		DoubleMatrix variance = testCov.sub(c);
 		return variance;
 	}
 
@@ -171,10 +173,10 @@ public class GP {
 	public DoubleMatrix generateSamples(DoubleMatrix in, DoubleMatrix parameters, double small, CovarianceFunction covf){
 
 		DoubleMatrix k = computeCovMatrix(in, in, parameters);
-		DoubleMatrix smallId = DoubleMatrix.eye(k.columns).mul(small);
+		DoubleMatrix smallId = DoubleMatrix.eye(k.columns).mul(small*small);
 		k = k.add(smallId);
 		DoubleMatrix l = Decompose.cholesky(k);
-		DoubleMatrix u = DoubleMatrix.randn(k.columns);//DoubleMatrix.ones(k.columns);
+		DoubleMatrix u = DoubleMatrix.randn(k.columns);//DoubleMatrix.ones(k.columns);//
 		DoubleMatrix y = l.transpose().mmul(u);
 
 		return y;

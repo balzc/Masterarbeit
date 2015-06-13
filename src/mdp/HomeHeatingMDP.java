@@ -26,6 +26,7 @@ public class HomeHeatingMDP {
 	private double minInternalTemp;
 	private double maxInternalTemp;
 	private double sdScale;
+	private double delta_t;
 	
 	private double prefTemp;
 	private double sensitivity;
@@ -53,19 +54,20 @@ public class HomeHeatingMDP {
 		this.predMeanPrice = predMeanPrice;
 		this.predCovPrice = predCovPrice;
 		this.deltaPrice = deltaPrice;
-		this.deltaExternalTemp = 1;
+		this.deltaExternalTemp = 2;
 		this.deltaInternalTemp = 1;
+		this.delta_t = 696;
 		this.numSteps = numSteps;
 		this.predCovExternalTemp = predCovExternalTemp;// predCovPrice;
 		this.predCovInternalTemp = predCovExternalTemp;
 		this.predMeanExternalTemp = predMeanExternalTemp;//predMeanPrice;
 		this.predMeanInternalTemp = predMeanExternalTemp;
 		this.sdScale = 5;
-		this.sensitivity = 0.5;
+		this.sensitivity = 1;//0.5;
 		this.powerOfHeater = 1000;
-		this.prefTemp = 25;
-		this.maxInternalTemp = 25;
-		this.minInternalTemp = 15;
+		this.prefTemp = 20;
+		this.maxInternalTemp = 30;
+		this.minInternalTemp = 10;
 		this.massAir = 1205;//1205;
 		this.coefficientOfPerformance = 2.5;
 		this.leakageRate = 90;
@@ -73,6 +75,7 @@ public class HomeHeatingMDP {
 	}
 	
 	public void work(){
+		System.out.println(rewards(20, 0, 20) + " " + rewards(20, 1, 20));
 		computePrices();
 		computeExternalTemp();
 
@@ -93,7 +96,7 @@ public class HomeHeatingMDP {
 	}
 	public double computeInternalTempProb(int i, int j, int k,int m){
 		double Q = actions[m]*powerOfHeater*coefficientOfPerformance - leakageRate*(internalTemp[j] - externalTemp[k]);
-		double temp = internalTemp[j] + Q*deltaInternalTemp/(massAir*heatCapacity);
+		double temp = internalTemp[j] + Q*delta_t/(massAir*heatCapacity);
 
 		double prob = Math.abs(temp-internalTemp[i])*2. < deltaExternalTemp? 1 : 0;
 		return prob;
@@ -111,10 +114,10 @@ public class HomeHeatingMDP {
 		return 0.5*(Erf.erf( (y1-m)/(Math.sqrt(2)*s),(y2-m)/(Math.sqrt(2)*s)) );
 	}
 	public void computeInternalTemp(){
-		int numTemp = (int)(((maxInternalTemp - minInternalTemp))/(deltaExternalTemp))+1;
+		int numTemp = (int)(((maxInternalTemp - minInternalTemp))/(deltaInternalTemp))+1;
 		this.internalTemp = new double[numTemp];
 		for (int i = 0; i<numTemp; i++){
-			internalTemp[i] = minInternalTemp + i*deltaExternalTemp;
+			internalTemp[i] = minInternalTemp + i*deltaInternalTemp;
 		}
 	}
 
@@ -196,7 +199,7 @@ public class HomeHeatingMDP {
 	
 
 	public double rewards(double internalTemp, int action, double price){
-		return maxInternalTemp - sensitivity*(prefTemp - internalTemp)*(prefTemp - internalTemp) - action*price*deltaInternalTemp*powerOfHeater/(1000.*3600.);
+		return maxInternalTemp - sensitivity*(prefTemp - internalTemp)*(prefTemp - internalTemp) - action*price*delta_t*powerOfHeater/(1000.*3600.);
 	}
 
 	public int internalTempToState(double temp){
@@ -261,7 +264,7 @@ public class HomeHeatingMDP {
 	public double updateInternalTemperature(double internalTemp, double externalTemp, int heaterOn){
 		double Q = heaterOn*powerOfHeater*coefficientOfPerformance - leakageRate*(internalTemp - externalTemp);
 		System.out.println(Q);
-		return internalTemp + Q*deltaInternalTemp/(massAir*heatCapacity);
+		return internalTemp + Q*delta_t/(massAir*heatCapacity);
 	}
 	
 	public void computeProbabilityTables(){
@@ -269,6 +272,7 @@ public class HomeHeatingMDP {
 			time = System.nanoTime();
 		}
 		//priceProb[i][j][k] = Pr(price[i]| price[j], timestep = k+1)
+		System.out.println(prices.length + " " + internalTemp.length + " " + externalTemp.length);
 		this.priceProb = new double[prices.length][prices.length][numSteps-1];
 		//internalTempProb[i][j][k] = Pr(internalTemp[i] | internalTemp[j], externalTemp[k], actions[m])
 		this.internalTempProb = new double[internalTemp.length][internalTemp.length][externalTemp.length][actions.length];
