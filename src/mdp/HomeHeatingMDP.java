@@ -63,25 +63,26 @@ public class HomeHeatingMDP {
 		this.predMeanExternalTemp = predMeanExternalTemp;//predMeanPrice;
 		this.predMeanInternalTemp = predMeanExternalTemp;
 		this.sdScale = 5;
-		this.sensitivity = 1;//0.5;
+		this.sensitivity = 0.5;
 		this.powerOfHeater = 1000;
-		this.prefTemp = 20;
+		this.prefTemp = 22;
 		this.maxInternalTemp = 30;
 		this.minInternalTemp = 10;
 		this.massAir = 1205;//1205;
 		this.coefficientOfPerformance = 2.5;
-		this.leakageRate = 90;
+		this.leakageRate = 90;//90
 		this.heatCapacity = 1000;//1000;
 	}
 	
 	public void work(){
-		System.out.println(rewards(20, 0, 20) + " " + rewards(20, 1, 20));
+		System.out.println(rewards(20, 0, 20) + " " + rewards(15, 0, 20) + " " + rewards(17, 1, 18));
 		computePrices();
 		computeExternalTemp();
 
 		computeInternalTemp();
 		
 		computeProbabilityTables();
+		
 		solveMDP();
 	}
 
@@ -98,7 +99,7 @@ public class HomeHeatingMDP {
 		double Q = actions[m]*powerOfHeater*coefficientOfPerformance - leakageRate*(internalTemp[j] - externalTemp[k]);
 		double temp = internalTemp[j] + Q*delta_t/(massAir*heatCapacity);
 
-		double prob = Math.abs(temp-internalTemp[i])*2. < deltaExternalTemp? 1 : 0;
+		double prob = Math.abs(temp-internalTemp[i])*2. < deltaInternalTemp? 1 : 0;
 		return prob;
 	}
 
@@ -199,6 +200,7 @@ public class HomeHeatingMDP {
 	
 
 	public double rewards(double internalTemp, int action, double price){
+		
 		return maxInternalTemp - sensitivity*(prefTemp - internalTemp)*(prefTemp - internalTemp) - action*price*delta_t*powerOfHeater/(1000.*3600.);
 	}
 
@@ -263,7 +265,6 @@ public class HomeHeatingMDP {
 	
 	public double updateInternalTemperature(double internalTemp, double externalTemp, int heaterOn){
 		double Q = heaterOn*powerOfHeater*coefficientOfPerformance - leakageRate*(internalTemp - externalTemp);
-		System.out.println(Q);
 		return internalTemp + Q*delta_t/(massAir*heatCapacity);
 	}
 	
@@ -309,16 +310,16 @@ public class HomeHeatingMDP {
 				for (int k = 0; k<externalTemp.length; k++){
 					for(int a = 0; a<actions.length; a++){
 						internalTempProb[i][j][k][a] = computeInternalTempProb(i, j, k, a);
-//						System.out.print(internalTempProb[i][j][k][a] + " ");
+						System.out.print(internalTempProb[i][j][k][a] + " ");
 
 					}
-//					System.out.println();
+					System.out.println();
 
 				}
-//				System.out.println();
+				System.out.println();
 
 			}		
-//			System.out.println();
+			System.out.println();
 
 		}
 //		System.out.println();
@@ -385,16 +386,22 @@ public class HomeHeatingMDP {
 						for(int a = 0; a < actions.length; a++){
 							double qval = rewards(internalTemp[it],a,prices[p]);
 //							System.out.println("action: " +a);
-							double sum = 0;
+							double sumextt = 0;
+							double sumintt = 0;
+							double sump = 0;
+							double sumtot = 0;
 							for(int pn = 0; pn < prices.length; pn++){
 								for(int itn = 0; itn < internalTemp.length; itn++){
 									for(int etn = 0; etn < externalTemp.length; etn++){
-										qval += internalTempProb[itn][it][et][a]*externalTempProb[etn][et][t]*priceProb[p][pn][t]*qValues[t+1][pn][itn][etn];
-										sum += internalTempProb[itn][it][et][a];
+										qval += internalTempProb[itn][it][et][a]*externalTempProb[etn][et][t]*priceProb[pn][p][t]*qValues[t+1][pn][itn][etn];
+//										sumextt += externalTempProb[etn][et][t];
+//										sumintt += internalTempProb[itn][it][et][a];
+//										sump += priceProb[pn][p][t];
+//										sumtot += internalTempProb[itn][it][et][a]*externalTempProb[etn][et][t]*priceProb[pn][p][t];
 									}
 								}
 							}
-//							System.out.println("sum: " +sum + " qval: " + qval);
+//							System.out.println("sumextt: " +sumextt + " sump:  " + sump + " sumintt " + sumintt + " qval: " + qval + " sumtot " +sumtot);
 
 							if(qval > currentMax){
 								currentMax = qval;
