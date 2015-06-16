@@ -86,7 +86,7 @@ public class Main {
 		Multiplicative mult = new Multiplicative(c1, c2);
 		Additive a1 = new Additive(mult, m);
 		
-		int noData = 960;
+		int noData = 96;
 		double stepsize = 1./96.;
 		double[] dataX = new double[noData];
 		double[] dataY =  new double[noData];
@@ -112,11 +112,19 @@ public class Main {
 		int runs = 1;
 		double cumulativeU = 0;
 		double currentTemp = 20;
-		int steps = 288;
-		int trainSetSize = 5;
+		int steps = 96;
+		int trainSetSize = 0;
 		int initialOffset = 0;
 		double[] temperatures = new double[runs*steps];
 		int[] actions = new int[runs*steps];
+
+		DoubleMatrix priceSimple1 = DoubleMatrix.ones(24).mul(10);
+		DoubleMatrix priceSimple2 = DoubleMatrix.ones(24).mul(10);
+		DoubleMatrix priceSimple3 = DoubleMatrix.ones(24).mul(50);
+		DoubleMatrix priceSimple4 = DoubleMatrix.ones(24).mul(50);
+		DoubleMatrix priceSimple = DoubleMatrix.concatVertically(priceSimple1, priceSimple2);
+		priceSimple = DoubleMatrix.concatVertically(priceSimple, priceSimple3);
+		priceSimple = DoubleMatrix.concatVertically(priceSimple, priceSimple4);
 
 		for(int i = 0; i < runs; i++){
 			double[] xTrain = new double[steps*trainSetSize];
@@ -132,28 +140,29 @@ public class Main {
 
 			
 		
-			DoubleMatrix yTrainMPrices = subVector(initialOffset, initialOffset+steps*trainSetSize, priceSamples);
-			DoubleMatrix yTrainMTemps = subVector(initialOffset, initialOffset+steps*trainSetSize, tempSamples);
-
-			GP priceGP = new GP(xTrainM,xTestM,P,cf,nl);
-			priceGP.setup(yTrainMPrices);
-			GP tempGP = new GP(xTrainM,xTestM,P,cf,nl);
-			tempGP.setup(yTrainMTemps);
-			DoubleMatrix predMeanPrices = priceGP.getPredMean().add(20);
-			DoubleMatrix predMeanTemps = tempGP.getPredMean().add(10);
-
-			HomeHeatingMDP testmdp = new HomeHeatingMDP(predMeanPrices,priceGP.getPredVar(),predMeanTemps, tempGP.getPredVar(), 5,steps);
+//			DoubleMatrix yTrainMPrices = subVector(initialOffset, initialOffset+steps*trainSetSize, priceSamples);
+//			DoubleMatrix yTrainMTemps = subVector(initialOffset, initialOffset+steps*trainSetSize, tempSamples);
+//
+//			GP priceGP = new GP(xTrainM,xTestM,P,cf,nl);
+//			priceGP.setup(yTrainMPrices);
+//			GP tempGP = new GP(xTrainM,xTestM,P,cf,nl);
+//			tempGP.setup(yTrainMTemps);
+			DoubleMatrix predMeanPrices = priceSimple;//priceGP.getPredMean().add(20);
+			DoubleMatrix predMeanTemps = DoubleMatrix.ones(96).mul(10);//tempGP.getPredMean().add(10);
+			DoubleMatrix predVarPrices = DoubleMatrix.ones(96);
+			DoubleMatrix predVarTemps = DoubleMatrix.ones(96);
+			HomeHeatingMDP testmdp = new HomeHeatingMDP(predMeanPrices,predVarPrices,predMeanTemps, predVarTemps, 5,steps);
 
 			testmdp.work();
 			// heat according to policy and update cumulative utility
 			int tmp = initialOffset+steps*trainSetSize;
 			for(int o = tmp; o < tmp + steps; o++){
-				System.out.println(o + " " + tmp + " " + testmdp.priceToState(predMeanPrices.get(o-tmp))+ " " + testmdp.externalTempToState(predMeanTemps.get(o-tmp)) + " "+testmdp.internalTempToState(currentTemp) + " " + currentTemp);
+//				System.out.println(o + " " + tmp + " " + predMeanPrices.get(o-tmp)+ " " + predMeanTemps.get(o-tmp) + " "+testmdp.internalTempToState(currentTemp) + " " + currentTemp);
 				int action = testmdp.getOptPolicy()[o-tmp][testmdp.priceToState(predMeanPrices.get(o-tmp))][testmdp.internalTempToState(currentTemp)][testmdp.externalTempToState(predMeanTemps.get(o-tmp))];
-				currentTemp = testmdp.updateInternalTemperature(currentTemp,tempSamples.get(o) , action);
-				if(currentTemp > 24 || currentTemp < 16){
-					System.out.println(testmdp.rewards(currentTemp, 0, priceSamples.get(o)) +" "+ testmdp.rewards(currentTemp, 1, priceSamples.get(o)));
-				}
+				currentTemp = testmdp.updateInternalTemperature(currentTemp,predMeanTemps.get(o) , action);
+//				if(currentTemp > 24 || currentTemp < 16){
+//					System.out.println("strange temps" +testmdp.rewards(currentTemp, 0, priceSamples.get(o)) +" "+ testmdp.rewards(currentTemp, 1, priceSamples.get(o)));
+//				}
 				cumulativeU += testmdp.rewards(currentTemp, action, priceSamples.get(o));
 				temperatures[o-steps*trainSetSize] = currentTemp;
 				actions[o-steps*trainSetSize] = action;
@@ -196,7 +205,7 @@ public class Main {
 		Multiplicative mult = new Multiplicative(c1, c2);
 		Additive a1 = new Additive(mult, m);
 		
-		int noData =1920;
+		int noData =192;
 		double stepsize = 1./96.;
 		double[] dataX = new double[noData];
 		double[] dataY =  new double[noData];
@@ -208,7 +217,7 @@ public class Main {
 		}
 	
 		double[] dataP = {2,1.5,2,1,1.2,0.2,0.2};//{2,1.5,1,1.2,0.2,0.2}
-		int noTestData = 124;
+		int noTestData = 50;
 		double[] dataTest = new double[noTestData];// = {11,12,13,14,15,16};
 		for(int i = 0; i < dataTest.length; i++){
 			dataTest[i] = i*stepsize + stepsize*noData;
@@ -217,15 +226,21 @@ public class Main {
 		DoubleMatrix X = new DoubleMatrix(dataX);
 		DoubleMatrix Y = new DoubleMatrix(dataY);
 		DoubleMatrix P = new DoubleMatrix(dataP);
-		DoubleMatrix testIn = subVector(noData-noTestData, noData, X);// new DoubleMatrix(dataTest);
-		DoubleMatrix trainIn = subVector(0, noData-noTestData, X);
+		DoubleMatrix testIn = new DoubleMatrix(dataTest);// new DoubleMatrix(dataTest);
 		CovarianceFunction cf = a1;
 		GP gp = new GP(X.dup(), testIn.dup(), P.dup(), cf, nl);
 		DoubleMatrix samples = gp.generateSamples(X.dup(), P.dup(), nl, cf);
+		gp.setup(samples);
+		printMatrix(gp.getPredMean());
+		printMatrix(samples);
+		printMatrix(gp.getTrainCov());
+		printMatrix(testIn);
+		printMatrix(X);
+		
 //		DoubleMatrix trainOut = subVector(0, noData-noTestData, samples);
 //		GP gpnew = new GP(trainIn.dup(), testIn.dup(), P.dup(), cf, nl);
 //		gpnew.setup(trainOut);
-		FileHandler.matrixToCsv(samples, "/users/balz/documents/workspace/masterarbeit/data/prices2.csv");
+//		FileHandler.matrixToCsv(samples, "/users/balz/documents/workspace/masterarbeit/data/prices2.csv");
 	}
 	
 	public static DoubleMatrix subVector(int start, int end, DoubleMatrix vector){

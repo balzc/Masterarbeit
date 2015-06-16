@@ -9,6 +9,8 @@ import org.jblas.Decompose;
 import org.jblas.Solve;
 import org.jblas.DoubleMatrix;
 
+import com.sun.org.apache.bcel.internal.util.SecuritySupport;
+
 import util.FileHandler;
 public class GP {
 	private CovarianceFunction covf;
@@ -60,7 +62,8 @@ public class GP {
 		testTrainCov = computeCovMatrix(trainIn, testIn, parameters);
 //		l = computeL();
 //		alpha = computeAlpha();
-		predMean = computeMean();
+		predMean = computeMean2();
+		Main.printMatrix(computeMean());
 		predVar = computeVariance();
 	}
 	
@@ -86,14 +89,39 @@ public class GP {
 	public DoubleMatrix computeMean(){
 		DoubleMatrix cova = computeCovMatrix(trainIn, testIn, parameters);
 		DoubleMatrix identity = DoubleMatrix.eye(trainCov.rows);
-		DoubleMatrix temp = trainCov;//.add(identity.mul(noiselevel));
+		DoubleMatrix temp = trainCov.add(identity.mul(noiselevel));
 		DoubleMatrix covInv = Solve.solvePositive(temp, identity);
+		System.out.println("AlphaInv");
+
+		Main.printMatrix(covInv.mmul(trainOut));
 		DoubleMatrix mean = cova.transpose().mmul(covInv).mmul(trainOut);//cova.transpose().mmul(alpha);
 		return mean;
 	}
+	
+	public DoubleMatrix computeMean2(){
+		DoubleMatrix cova = computeCovMatrix(trainIn, testIn, parameters);
+		DoubleMatrix identity = DoubleMatrix.eye(trainCov.rows);
+		DoubleMatrix temp = trainCov.add(identity.mul(noiselevel));
+		DoubleMatrix l = Decompose.cholesky(temp).transpose();
+		System.out.println("Samples");
+
+		Main.printMatrix(trainIn);
+		System.out.println("L");
+
+		Main.printMatrix(l);
+		Main.printMatrix(trainCov);
+		Main.printMatrix(l.mmul(l.transpose()));
+		DoubleMatrix alpha = Solve.solve( l.transpose(),Solve.solve(l, trainIn));
+		System.out.println("AlphaChol");
+		Main.printMatrix(alpha);
+		Main.printMatrix(cova);
+		DoubleMatrix mean = cova.transpose().mmul(alpha);
+		return mean;
+	}
+	
 	public DoubleMatrix computeVariance(){
 		DoubleMatrix identity = DoubleMatrix.eye(trainCov.rows);
-		DoubleMatrix temp = trainCov;//.add(identity.mul(noiselevel));
+		DoubleMatrix temp = trainCov.add(identity.mul(noiselevel));
 		DoubleMatrix covInv = Solve.solvePositive(temp, identity);
 		DoubleMatrix t = testTrainCov.transpose().mmul(covInv);
 		DoubleMatrix c = t.mmul(testTrainCov);
