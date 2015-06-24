@@ -1,5 +1,6 @@
 package main;
 
+import mdp.EVMDP;
 import mdp.HomeHeatingMDP;
 
 import org.jblas.DoubleMatrix;
@@ -15,65 +16,7 @@ public class Main {
 
 	public static void main(String[] args) {
 		test1();
-//		generateData();
-		
-//		gp.setup(samples);
-//		printMatrix(X);
-//		printMatrix(testIn);
-//		printMatrix(gp.getTestTrainCov());
-//		printMatrix(gp.getTestCov());
-//		printMatrix(gp.getTrainCov());
-//		printMatrix(gp.getPredMean());
-//		System.out.println("parmas: ");
-//		samples.print();
-//		gp.setup();
-//		double noise = 0.5;
-//		double cumulativeU = 0;
-//		double currentTemp = 24;
-//		int steps = 10;
-//		int ibefore = 0;
-//		double[] xTrain = new double[steps];
-//		for(int i = 0; i < steps; i++){
-//			xTrain[i] = i;
-//		}
-//		samples.print();
-//		System.out.println(samples.mean());
-//		DoubleMatrix xTrainM = new DoubleMatrix(xTrain);
-//		for(int i = steps; i < 100; i+= steps){
-//			double[] xTest = new double[steps];
-//			for(int o = 0; o < steps; o++){
-//				xTest[o] = o + ibefore;
-//			}
-//			DoubleMatrix xTestM = new DoubleMatrix(xTest);
-//			DoubleMatrix yTrainM = subVector(0, i, samples);
-//			GP newGP = new GP(xTrainM,yTrainM,xTestM,P,c1,noise);
-//			newGP.setup();
-//			DoubleMatrix predMean = newGP.getPredMean();
-//			HomeHeatingMDP testmdp = new HomeHeatingMDP(predMean,newGP.getTestCov(),1,steps);
-//			testmdp.work();
-//			// heat according to policy and update cumulative utility
-//			for(int o = ibefore; o < ibefore + stepsize; o++){
-//				System.out.println("pts: " + testmdp.priceToState(predMean.get(o-ibefore)) + " ets: " + testmdp.externalTempToState(predMean.get(o-ibefore)) + " its: " + testmdp.internalTempToState(currentTemp));
-//				int action = testmdp.getOptPolicy()[o-ibefore][testmdp.priceToState(predMean.get(o-ibefore))][testmdp.internalTempToState(currentTemp)][testmdp.externalTempToState(predMean.get(o-ibefore))];
-//				currentTemp = testmdp.updateInternalTemperature(currentTemp,samples.get(o) , action);
-//				System.out.println(currentTemp);
-//				cumulativeU += testmdp.rewards(currentTemp, action, samples.get(o));
-//			}
-//			
-//			xTrainM = DoubleMatrix.concatVertically(xTrainM,xTestM);
-//			ibefore = i;
-//		}
-//		System.out.println(cumulativeU);
-//		DoubleMatrix np = gp.minimize(fakeP, -20, X, samples);
-//		np.print();
-//
-//		gp.getPredMean().print();
-//		gp.getTestCov().print();
-//		int num = 10;
-//		
-//		testmdp.printOptPolicy();
-//		testmdp.printQvals();
-//		testmdp.printPrices();
+
 	}
 	
 	public static void test1(){
@@ -118,10 +61,10 @@ public class Main {
 		double[] temperatures = new double[runs*steps];
 		int[] actions = new int[runs*steps];
 
-		DoubleMatrix priceSimple1 = DoubleMatrix.ones(24).mul(10);
-		DoubleMatrix priceSimple2 = DoubleMatrix.ones(24).mul(10);
-		DoubleMatrix priceSimple3 = DoubleMatrix.ones(24).mul(50);
-		DoubleMatrix priceSimple4 = DoubleMatrix.ones(24).mul(50);
+		DoubleMatrix priceSimple1 = DoubleMatrix.ones(24).mul(0);
+		DoubleMatrix priceSimple2 = DoubleMatrix.ones(24).mul(0);
+		DoubleMatrix priceSimple3 = DoubleMatrix.ones(24).mul(40);
+		DoubleMatrix priceSimple4 = DoubleMatrix.ones(24).mul(40);
 		DoubleMatrix priceSimple = DoubleMatrix.concatVertically(priceSimple1, priceSimple2);
 		priceSimple = DoubleMatrix.concatVertically(priceSimple, priceSimple3);
 		priceSimple = DoubleMatrix.concatVertically(priceSimple, priceSimple4);
@@ -157,7 +100,7 @@ public class Main {
 			// heat according to policy and update cumulative utility
 			int tmp = initialOffset+steps*trainSetSize;
 			for(int o = tmp; o < tmp + steps; o++){
-//				System.out.println(o + " " + tmp + " " + predMeanPrices.get(o-tmp)+ " " + predMeanTemps.get(o-tmp) + " "+testmdp.internalTempToState(currentTemp) + " " + currentTemp);
+				System.out.println(o  + " " + testmdp.priceToState(predMeanPrices.get(o-tmp))+ " " + predMeanTemps.get(o-tmp) + " "+testmdp.internalTempToState(currentTemp) + " " + currentTemp + " " + testmdp.getInternalTemp()[testmdp.internalTempToState(currentTemp)]);
 				int action = testmdp.getOptPolicy()[o-tmp][testmdp.priceToState(predMeanPrices.get(o-tmp))][testmdp.internalTempToState(currentTemp)][testmdp.externalTempToState(predMeanTemps.get(o-tmp))];
 				currentTemp = testmdp.updateInternalTemperature(currentTemp,predMeanTemps.get(o) , action);
 //				if(currentTemp > 24 || currentTemp < 16){
@@ -197,7 +140,112 @@ public class Main {
 		System.out.println(cumulativeU);
 
 	}
+	public static void testEVMDP(){
+		String fileHandlePrices = "/users/balz/documents/workspace/masterarbeit/data/prices2.csv";
+		String fileHandleTemps = "/users/balz/documents/workspace/masterarbeit/data/temps2.csv";
+
+		SquaredExponential c1 = new SquaredExponential();
+		Periodic c2 = new Periodic();
+		Matern m = new Matern();
+		Multiplicative mult = new Multiplicative(c1, c2);
+		Additive a1 = new Additive(mult, m);
+		
+		int noData = 96;
+		double stepsize = 1./96.;
+		double[] dataX = new double[noData];
+		double[] dataY =  new double[noData];
+		for(int i=0; i< dataX.length; i++){
+			dataX[i] = i*stepsize;
+		}
+		for(int i=0; i< noData; i++){
+			dataY[i] = 10;
+		}
 	
+		double[] dataP = {2,1.5,2,1,1.2,0.2,0.2};//{2,1.5,1,1.2,0.2,0.2}
+		double[] dataTest = new double[noData];// = {11,12,13,14,15,16};
+		for(int i = 0; i < dataTest.length/10; i++){
+			dataTest[i] = i*stepsize + noData*stepsize;
+		}
+		double nl = 0.05;		
+		DoubleMatrix priceSamples = FileHandler.csvToMatrix(fileHandlePrices);
+		DoubleMatrix predictedPrices = new DoubleMatrix();
+		DoubleMatrix P = new DoubleMatrix(dataP);
+		CovarianceFunction cf = a1;
+		int runs = 1;
+		double cumulativeU = 0;
+		int currentLoad = 0;
+		int steps = 96;
+		int trainSetSize = 0;
+		int initialOffset = 0;
+		double[] loads = new double[runs*steps];
+		int[] actions = new int[runs*steps];
+
+		DoubleMatrix priceSimple1 = DoubleMatrix.ones(24).mul(0);
+		DoubleMatrix priceSimple2 = DoubleMatrix.ones(24).mul(0);
+		DoubleMatrix priceSimple3 = DoubleMatrix.ones(24).mul(40);
+		DoubleMatrix priceSimple4 = DoubleMatrix.ones(24).mul(40);
+		DoubleMatrix priceSimple = DoubleMatrix.concatVertically(priceSimple1, priceSimple2);
+		priceSimple = DoubleMatrix.concatVertically(priceSimple, priceSimple3);
+		priceSimple = DoubleMatrix.concatVertically(priceSimple, priceSimple4);
+
+		for(int i = 0; i < runs; i++){
+			double[] xTrain = new double[steps*trainSetSize];
+			for(int o = 0; o < steps*trainSetSize; o++){
+				xTrain[o] = o*stepsize+initialOffset*stepsize;
+			}
+			DoubleMatrix xTrainM = new DoubleMatrix(xTrain);
+			double[] xTest = new double[steps];
+			for(int o = 0; o < steps; o++){
+				xTest[o] = o*stepsize + (initialOffset+steps)*stepsize*trainSetSize;
+			}
+			DoubleMatrix xTestM = new DoubleMatrix(xTest);
+
+			
+		
+			DoubleMatrix yTrainMPrices = subVector(initialOffset, initialOffset+steps*trainSetSize, priceSamples);
+			GP priceGP = new GP(xTrainM,xTestM,P,cf,nl);
+			priceGP.setup(yTrainMPrices);
+			DoubleMatrix predMeanPrices = priceGP.getPredMean().add(20);
+			DoubleMatrix predVarPrices = DoubleMatrix.ones(96);
+			EVMDP testmdp = new EVMDP(predMeanPrices,predVarPrices, 5,steps);
+
+			testmdp.work();
+			// heat according to policy and update cumulative utility
+			int tmp = initialOffset+steps*trainSetSize;
+			for(int o = tmp; o < tmp + steps; o++){
+				System.out.println(o  + " " + testmdp.priceToState(predMeanPrices.get(o-tmp))+ " " +  currentLoad );
+				int action = testmdp.getOptPolicy()[o-tmp][testmdp.priceToState(predMeanPrices.get(o-tmp))][currentLoad];
+				currentLoad = testmdp.updateLoad(currentLoad, action);
+
+				cumulativeU += testmdp.rewards(currentLoad, action, priceSamples.get(o),o);
+				loads[o-steps*trainSetSize] = currentLoad;
+				actions[o-steps*trainSetSize] = action;
+			}
+			initialOffset += steps;
+			if(i > 0){
+				predictedPrices = DoubleMatrix.concatVertically(predictedPrices, predMeanPrices);
+			} else {
+				predictedPrices = predMeanPrices;
+			}
+
+		}
+		printMatrix(subVector(steps*trainSetSize, steps*trainSetSize+runs*steps, priceSamples));
+		printMatrix(predictedPrices);
+		System.out.print("[");
+		for(int i = 0; i< loads.length; i++){
+			System.out.print(loads[i] + "; ");
+
+		}
+		System.out.println("]");
+		System.out.print("[");
+		for(int i = 0; i< actions.length; i++){
+			System.out.print(actions[i] + "; ");
+
+		}
+		System.out.println("]");
+		System.out.println(cumulativeU);
+
+	}
 	public static void generateData(){
 		SquaredExponential c1 = new SquaredExponential();
 		Periodic c2 = new Periodic();

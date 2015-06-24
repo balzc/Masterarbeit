@@ -56,9 +56,9 @@ public class HomeHeatingMDP {
 
 		this.predMeanPrice = predMeanPrice;
 		this.predCovPrice = predCovPrice;
-		this.deltaPrice = deltaPrice;
+		this.deltaPrice = 40;//deltaPrice;
 		this.deltaExternalTemp = 2;
-		this.deltaInternalTemp = 0.5;
+		this.deltaInternalTemp = 0.1;
 		this.delta_t = 696;
 		this.numSteps = numSteps;
 		this.predCovExternalTemp = predCovExternalTemp;// predCovPrice;
@@ -66,9 +66,9 @@ public class HomeHeatingMDP {
 		this.predMeanExternalTemp = predMeanExternalTemp;//predMeanPrice;
 		this.predMeanInternalTemp = predMeanExternalTemp;
 		this.sdScale = 5;
-		this.sensitivity = 0.;
+		this.sensitivity = 0.5;
 		this.powerOfHeater = 1000;
-		this.prefTemp = 22;
+		this.prefTemp = 23;
 		this.maxInternalTemp = 25;
 		this.minInternalTemp = 15;
 		this.massAir = 1205;//1205;
@@ -80,15 +80,16 @@ public class HomeHeatingMDP {
 	}
 	
 	public void work(){
-		System.out.println(rewards(18, 0, 100) + " " + rewards(16, 0, 100) + " " + rewards(17, 1, 100));
-		
+//		System.out.println(rewards(18, 0, 100) + " " + rewards(16, 0, 100) + " " + rewards(17, 1, 100));
 		computePrices();
 		computeExternalTemp();
 
 		computeInternalTemp();
 		computeProbabilityTables();
-		
+		System.out.println("next step " + computeInternalTempProb(0, 1, 0, 0));
+
 		solveMDP();
+//		printOptPolicy();
 	}
 
 	//probability table: priceProb[i][j][k] = Pr(prices[i] | prices[j], timestep=k)
@@ -99,11 +100,11 @@ public class HomeHeatingMDP {
 //		double y1 = prices[i] - 0.5*deltaPrice;
 //		double y2 = prices[i] + 0.5*deltaPrice;
 //		return 0.5*(Erf.erf( (y1-m)/(Math.sqrt(2)*s), (y2-m)/(Math.sqrt(2)*s)) );
-		if(prices[i] == 10 && (k < 24 ) ){
+		if(prices[i] == 0 && (k < 24 ) ){
 			return 1;
-		}else if(prices[i] == 10 && (k < 48 && k > 23) ){
+		}else if(prices[i] == 0 && (k < 48 && k > 23) ){
 			return 1;
-		} else if(prices[i] == 50 && (k < 96 && k >= 48) ){
+		} else if(prices[i] == 40 && (k < 96 && k >= 48) ){
 			return 1;
 		} else {
 			return 0;
@@ -115,6 +116,15 @@ public class HomeHeatingMDP {
 		double temp = internalTemp[j] + Q*delta_t/(massAir*heatCapacity);
 
 		double prob = Math.abs(temp-internalTemp[i])*2. < deltaInternalTemp? 1 : 0;
+//		if(i == 0 && j == 0 && m == 0){
+//			return 1;
+//		}
+//		if(i == internalTemp.length -1 && i == j && m == 1){
+//			return 1;
+//		}
+//		if(i == internalTemp.length -1 && i == j+1 && m == 1){
+//			return 1;
+//		}
 		return prob;
 	}
 
@@ -182,8 +192,8 @@ public class HomeHeatingMDP {
 	}
 
 	public void computePrices(){
-		double minPrice = 10;//findMinimumPrice();
-		double maxPrice = 50;//findMaximumPrice();
+		double minPrice = 0;//findMinimumPrice();
+		double maxPrice = 40;//findMaximumPrice();
 
 		minPrice = Math.floor((minPrice/deltaPrice + 0.5))*deltaPrice;
 
@@ -315,13 +325,15 @@ public class HomeHeatingMDP {
 		}
 		//normalize externalTempProb
 		for (int k = 0; k<numSteps-1; k++){
-//			System.out.print(k + " ");
+//			System.out.print("k= " +k + " ");
 
 			for(int j = 0; j<prices.length; j++){
-//				System.out.println(j + " ");
+//				System.out.print("j= "+j + " ");
 
 				for (int i = 0; i<prices.length; i++){
 					priceProb[i][j][k] /= normsPrice[k][j];
+//					System.out.println("i=" + i + " ");
+
 //					System.out.print(priceProb[i][j][k] + " ");
 				}
 //				System.out.println();
@@ -396,7 +408,6 @@ public class HomeHeatingMDP {
 
 
 					double temp = rewards(internalTemp[it],0,prices[p]);
-
 					qValues[numSteps-1][p][it][et] = temp;
 
 
@@ -404,13 +415,15 @@ public class HomeHeatingMDP {
 			}
 		}
 		
-
+		
 		for(int t = numSteps-2; t >-1; t--){
 			for(int p = 0; p < prices.length; p++){
 				for(int it = 0; it < internalTemp.length; it++){
 					for(int et = 0; et < externalTemp.length; et++){
 						double currentMax = Double.NEGATIVE_INFINITY;
 						int currentBestAction = 0;
+						int counter[] = {0,0};
+
 						for(int a = 0; a < actions.length; a++){
 							double qval = rewards(internalTemp[it],a,prices[p]);
 //							System.out.println("action: " +a);
@@ -422,28 +435,35 @@ public class HomeHeatingMDP {
 								for(int itn = 0; itn < internalTemp.length; itn++){
 									for(int etn = 0; etn < externalTemp.length; etn++){
 										qval += internalTempProb[itn][it][et][a]*externalTempProb[etn][et][t]*priceProb[pn][p][t]*qValues[t+1][pn][itn][etn];
+							
+										
+										if(Math.abs(internalTempProb[itn][it][et][a]*externalTempProb[etn][et][t]*priceProb[pn][p][t]-1)<Math.pow(10, -10)){
+											counter[a]++;
+										}
 										sumextt += externalTempProb[etn][et][t];
 										sumintt += internalTempProb[itn][it][et][a];
 										sump += priceProb[pn][p][t];
 										sumtot += internalTempProb[itn][it][et][a]*externalTempProb[etn][et][t]*priceProb[pn][p][t];
+										
 									}
 								}
 							}
 						
 							
-//							if(Math.abs(sumtot-1)>Math.pow(10, -10)){
+//							if(qval- rewards(internalTemp[it],a,prices[p])< 10){
+//								System.out.println("sumextt: " +sumextt + " sump:  " + sump + " sumintt " + sumintt + " qval: " + qval + " sumtot " +sumtot);
 //							}
-							
-							
+//							
 							if(qval > currentMax){
 								currentMax = qval;
 								currentBestAction = a;
-								if(currentBestAction == 1){
-									System.out.println(qValues[t][p][it][et] + " se vals " + qval);
-									System.out.println(rewards(internalTemp[it],0,prices[p]) +" " +rewards(internalTemp[it],1,prices[p]));
-									System.out.println("sumextt: " +sumextt + " sump:  " + sump + " sumintt " + sumintt + " qval: " + qval + " sumtot " +sumtot);
-
-								}
+//								if(currentBestAction == 1){
+//									System.out.println(qValues[t][p][it][et] + " se vals " + qval);
+//									System.out.println("Rewards:" +rewards(internalTemp[it],0,prices[p]) +" " +rewards(internalTemp[it],1,prices[p]));
+//									System.out.println("counter0: " + counter[0] + " counter1:  " + counter[1] );
+//
+//
+//								}
 								qValues[t][p][it][et] = qval;
 								optPolicy[t][p][it][et] = currentBestAction;
 								
@@ -456,32 +476,73 @@ public class HomeHeatingMDP {
 				}
 			}
 		}
-		
+
+//		for(int j = 0; j<prices.length;j++){
+//			for(int i = 0; i<prices.length;i++){
+//				System.out.print("newold "+i+ " " + j + " ");
+//				for(int c = 0; c < numSteps-1;c++ ){
+//					System.out.print(externalTempProb[j][i][c]+ " ");
+//				}
+//			}
+//			System.out.println();
+//		}
+		System.out.println();
+		for(int j = 0; j<internalTemp.length;j++){
+			for(int i = 0; i<internalTemp.length;i++){
+				if(internalTempProb[i][j][0][1] != 0){
+					System.out.print(1+0.1*i + " ");
+				}else{
+					System.out.print(0 + " ");
+				}
+			}
+			System.out.println();
+		}
+		System.out.println();
+
+		for(int j = 0; j<internalTemp.length;j++){
+			for(int i = 0; i<internalTemp.length;i++){
+				if(internalTempProb[i][j][0][0] != 0){
+					System.out.print(1+0.1*i + " ");
+				} else {
+					System.out.print(0 + " ");
+				}
+
+			}
+			System.out.println();
+		}
 		printIntTemps();
 		printPrices();
 		printExtTemps();
 		System.out.println("test " );
-		System.out.print("[ ");
-		for(int i = 0; i<internalTemp.length;i++){
-//			System.out.print(qValues[numSteps-2][7][i][0]+ " ");
+		for(int k = numSteps-1; k >0; k--){
+			for(int j = 0; j < prices.length; j++){
+				System.out.print(k + " [ ");
+				for(int i = 12; i<internalTemp.length;i++){
+					System.out.print(i+ ":" + qValues[k][j][i][0]+ " ");
 
-			System.out.print(internalTempProb[i][11][0][0]*i+ " ");
-
+				}
+				System.out.println(" ]");
+			}
 		}
-		System.out.println(" ]");
+		System.out.println("testend");
 
 	}
 	
 	public void printOptPolicy(){
 		double sum = 0;
 		for(int t = 0; t <numSteps; t++){
+			System.out.print(t + "  ");
+
 			for(int p = 0; p < prices.length; p++){
 				for(int it = 0; it < internalTemp.length; it++){
 					for(int et = 0; et < externalTemp.length; et++){
-						System.out.print(prices[p] + " " + internalTemp[it] + " " + externalTemp[et] + " " + optPolicy[t][p][it][et] + "; ");
+						if(p == 1 && optPolicy[t][p][it][et] == 1){
+						System.out.print(prices[p] + " " + internalTemp[it] + " " + externalTemp[et] + " " + optPolicy[t][p][it][et] + "; ");}
 						sum += optPolicy[t][p][it][et];
 					}
 				}
+				System.out.println();
+
 			}
 			System.out.println();
 		}
