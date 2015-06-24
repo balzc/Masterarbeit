@@ -15,7 +15,7 @@ import gp.GP;
 public class Main {
 
 	public static void main(String[] args) {
-		test1();
+		testEVMDP();
 
 	}
 	
@@ -203,9 +203,9 @@ public class Main {
 			
 		
 			DoubleMatrix yTrainMPrices = subVector(initialOffset, initialOffset+steps*trainSetSize, priceSamples);
-			GP priceGP = new GP(xTrainM,xTestM,P,cf,nl);
-			priceGP.setup(yTrainMPrices);
-			DoubleMatrix predMeanPrices = priceGP.getPredMean().add(20);
+//			GP priceGP = new GP(xTrainM,xTestM,P,cf,nl);
+//			priceGP.setup(yTrainMPrices);
+			DoubleMatrix predMeanPrices = priceSimple;// priceGP.getPredMean().add(20);
 			DoubleMatrix predVarPrices = DoubleMatrix.ones(96);
 			EVMDP testmdp = new EVMDP(predMeanPrices,predVarPrices, 5,steps);
 

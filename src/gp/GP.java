@@ -62,7 +62,7 @@ public class GP {
 		testTrainCov = computeCovMatrix(trainIn, testIn, parameters);
 //		l = computeL();
 //		alpha = computeAlpha();
-		predMean = computeMean2();
+		predMean = computeMean();
 		Main.printMatrix(computeMean());
 		predVar = computeVariance();
 	}

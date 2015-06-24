@@ -51,6 +51,14 @@ public class EVMDP {
 		this.numSteps = numSteps;
 		this.sdScale = 5;
 		this.qMax = 25;
+		this.qRequired = 10;
+		this.qSlope = 2;
+		this.tOffset = 0;
+		this.tStart = 80;
+		this.tCrit = 82;
+		this.vTBase = 10;
+		this.tSlope = -(vTBase)/(tCrit-tStart);
+		this.vQBase = 10;
 
 	}
 
@@ -68,21 +76,21 @@ public class EVMDP {
 
 	//probability table: priceProb[i][j][k] = Pr(prices[i] | prices[j], timestep=k)
 	public double computePriceProb(int i, int j, int k){
-		double m = predMeanPrice.get(k) + predCovPrice.get(k,k-1)/predCovPrice.get(k-1,k-1)*(prices[j] - predMeanPrice.get(k-1));
-		double s = Math.sqrt(predCovPrice.get(k,k) - predCovPrice.get(k,k-1)*predCovPrice.get(k,k-1)/predCovPrice.get(k-1,k-1));
-
-		double y1 = prices[i] - 0.5*deltaPrice;
-		double y2 = prices[i] + 0.5*deltaPrice;
-		return 0.5*(Erf.erf( (y1-m)/(Math.sqrt(2)*s), (y2-m)/(Math.sqrt(2)*s)) );
-		//		if(prices[i] == 0 && (k < 24 ) ){
-		//			return 1;
-		//		}else if(prices[i] == 0 && (k < 48 && k > 23) ){
-		//			return 1;
-		//		} else if(prices[i] == 40 && (k < 96 && k >= 48) ){
-		//			return 1;
-		//		} else {
-		//			return 0;
-		//		}
+//		double m = predMeanPrice.get(k) + predCovPrice.get(k,k-1)/predCovPrice.get(k-1,k-1)*(prices[j] - predMeanPrice.get(k-1));
+//		double s = Math.sqrt(predCovPrice.get(k,k) - predCovPrice.get(k,k-1)*predCovPrice.get(k,k-1)/predCovPrice.get(k-1,k-1));
+//
+//		double y1 = prices[i] - 0.5*deltaPrice;
+//		double y2 = prices[i] + 0.5*deltaPrice;
+//		return 0.5*(Erf.erf( (y1-m)/(Math.sqrt(2)*s), (y2-m)/(Math.sqrt(2)*s)) );
+				if(prices[i] == 0 && (k < 24 ) ){
+					return 1;
+				}else if(prices[i] == 0 && (k < 48 && k > 23) ){
+					return 1;
+				} else if(prices[i] == 40 && (k < 96 && k >= 48) ){
+					return 1;
+				} else {
+					return 0;
+				}
 
 	}
 	public double computeLoadProb(int i, int j, int m){
@@ -150,18 +158,19 @@ public class EVMDP {
 
 
 	public double rewards(int load, int action, double price, int time){
+		double cost = price * action;
 		if(load < qRequired){
-			return 0;
+			return 0 - cost;
 		}
 		else {
 			if(time >= tStart && time <= tCrit){
-				return (qOffset + qSlope*time)*(tOffset + tSlope*time);
+				return (qOffset + qSlope*time)*(tOffset + tSlope*time) - cost;
 			}
 			else if(time < tStart){
-				return (qOffset + qSlope*time)*vTBase;
+				return (qOffset + qSlope*time)*vTBase - cost;
 			}
 			else {
-				return 0;
+				return 0 - cost;
 			}
 		}
 	}
