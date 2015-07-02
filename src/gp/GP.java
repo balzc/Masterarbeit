@@ -62,8 +62,7 @@ public class GP {
 		testTrainCov = computeCovMatrix(trainIn, testIn, parameters);
 //		l = computeL();
 //		alpha = computeAlpha();
-		predMean = computeMean();
-		Main.printMatrix(computeMean());
+		predMean = computeMean2();
 		predVar = computeVariance();
 	}
 	
@@ -90,8 +89,11 @@ public class GP {
 		DoubleMatrix cova = computeCovMatrix(trainIn, testIn, parameters);
 		DoubleMatrix identity = DoubleMatrix.eye(trainCov.rows);
 		DoubleMatrix temp = trainCov.add(identity.mul(noiselevel));
+		System.out.println("Temp1");
+
+		Main.printMatrix(temp);
 		DoubleMatrix covInv = Solve.solvePositive(temp, identity);
-		System.out.println("AlphaInv");
+		System.out.println("Alpha1");
 
 		Main.printMatrix(covInv.mmul(trainOut));
 		DoubleMatrix mean = cova.transpose().mmul(covInv).mmul(trainOut);//cova.transpose().mmul(alpha);
@@ -102,19 +104,16 @@ public class GP {
 		DoubleMatrix cova = computeCovMatrix(trainIn, testIn, parameters);
 		DoubleMatrix identity = DoubleMatrix.eye(trainCov.rows);
 		DoubleMatrix temp = trainCov.add(identity.mul(noiselevel));
+//		System.out.println("Temp2");
+//
+//		Main.printMatrix(temp);
 		DoubleMatrix l = Decompose.cholesky(temp).transpose();
-		System.out.println("Samples");
 
-		Main.printMatrix(trainIn);
-		System.out.println("L");
 
-		Main.printMatrix(l);
-		Main.printMatrix(trainCov);
-		Main.printMatrix(l.mmul(l.transpose()));
-		DoubleMatrix alpha = Solve.solve( l.transpose(),Solve.solve(l, trainIn));
-		System.out.println("AlphaChol");
-		Main.printMatrix(alpha);
-		Main.printMatrix(cova);
+		DoubleMatrix alpha = Solve.solve( l.transpose(),Solve.solve(l, trainOut));
+//		System.out.println("Alpha2");
+//
+//		Main.printMatrix(alpha);
 		DoubleMatrix mean = cova.transpose().mmul(alpha);
 		return mean;
 	}
@@ -122,10 +121,11 @@ public class GP {
 	public DoubleMatrix computeVariance(){
 		DoubleMatrix identity = DoubleMatrix.eye(trainCov.rows);
 		DoubleMatrix temp = trainCov.add(identity.mul(noiselevel));
-		DoubleMatrix covInv = Solve.solvePositive(temp, identity);
-		DoubleMatrix t = testTrainCov.transpose().mmul(covInv);
-		DoubleMatrix c = t.mmul(testTrainCov);
-		DoubleMatrix variance = testCov.sub(c);
+		DoubleMatrix l = Decompose.cholesky(temp).transpose();
+		DoubleMatrix v = Solve.solve(l,testTrainCov);
+		
+	
+		DoubleMatrix variance = testCov.sub(v.transpose().mmul(v));
 		return variance;
 	}
 

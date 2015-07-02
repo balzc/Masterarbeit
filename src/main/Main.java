@@ -16,7 +16,6 @@ public class Main {
 
 	public static void main(String[] args) {
 		testEVMDP();
-
 	}
 	
 	public static void test1(){
@@ -175,15 +174,15 @@ public class Main {
 		double cumulativeU = 0;
 		int currentLoad = 0;
 		int steps = 96;
-		int trainSetSize = 0;
-		int initialOffset = 0;
+		int trainSetSize = 1;
+		int initialOffset = 150;
 		double[] loads = new double[runs*steps];
 		int[] actions = new int[runs*steps];
 
-		DoubleMatrix priceSimple1 = DoubleMatrix.ones(24).mul(0);
-		DoubleMatrix priceSimple2 = DoubleMatrix.ones(24).mul(0);
-		DoubleMatrix priceSimple3 = DoubleMatrix.ones(24).mul(40);
-		DoubleMatrix priceSimple4 = DoubleMatrix.ones(24).mul(40);
+		DoubleMatrix priceSimple1 = DoubleMatrix.ones(24).mul(40);
+		DoubleMatrix priceSimple2 = DoubleMatrix.ones(24).mul(40);
+		DoubleMatrix priceSimple3 = DoubleMatrix.ones(24).mul(0);
+		DoubleMatrix priceSimple4 = DoubleMatrix.ones(24).mul(0);
 		DoubleMatrix priceSimple = DoubleMatrix.concatVertically(priceSimple1, priceSimple2);
 		priceSimple = DoubleMatrix.concatVertically(priceSimple, priceSimple3);
 		priceSimple = DoubleMatrix.concatVertically(priceSimple, priceSimple4);
@@ -203,11 +202,13 @@ public class Main {
 			
 		
 			DoubleMatrix yTrainMPrices = subVector(initialOffset, initialOffset+steps*trainSetSize, priceSamples);
-//			GP priceGP = new GP(xTrainM,xTestM,P,cf,nl);
-//			priceGP.setup(yTrainMPrices);
-			DoubleMatrix predMeanPrices = priceSimple;// priceGP.getPredMean().add(20);
-			DoubleMatrix predVarPrices = DoubleMatrix.ones(96);
-			EVMDP testmdp = new EVMDP(predMeanPrices,predVarPrices, 5,steps);
+			printMatrix(xTrainM);
+			printMatrix(xTestM);
+			GP priceGP = new GP(xTrainM,xTestM,P,cf,nl);
+			priceGP.setup(yTrainMPrices);
+			DoubleMatrix predMeanPrices = priceGP.getPredMean().add(20);
+			DoubleMatrix predVarPrices = priceGP.getPredVar();
+			EVMDP testmdp = new EVMDP(predMeanPrices,predVarPrices, .5,steps);
 
 			testmdp.work();
 			// heat according to policy and update cumulative utility
@@ -218,8 +219,8 @@ public class Main {
 				currentLoad = testmdp.updateLoad(currentLoad, action);
 
 				cumulativeU += testmdp.rewards(currentLoad, action, priceSamples.get(o),o);
-				loads[o-steps*trainSetSize] = currentLoad;
-				actions[o-steps*trainSetSize] = action;
+				loads[o-steps*trainSetSize-initialOffset] = currentLoad;
+				actions[o-steps*trainSetSize-initialOffset] = action;
 			}
 			initialOffset += steps;
 			if(i > 0){
@@ -230,7 +231,11 @@ public class Main {
 
 		}
 		printMatrix(subVector(steps*trainSetSize, steps*trainSetSize+runs*steps, priceSamples));
+		System.out.println();
+
 		printMatrix(predictedPrices);
+		System.out.println();
+
 		System.out.print("[");
 		for(int i = 0; i< loads.length; i++){
 			System.out.print(loads[i] + "; ");
@@ -253,7 +258,7 @@ public class Main {
 		Multiplicative mult = new Multiplicative(c1, c2);
 		Additive a1 = new Additive(mult, m);
 		
-		int noData =192;
+		int noData =96;
 		double stepsize = 1./96.;
 		double[] dataX = new double[noData];
 		double[] dataY =  new double[noData];
@@ -284,7 +289,7 @@ public class Main {
 		printMatrix(gp.getTrainCov());
 		printMatrix(testIn);
 		printMatrix(X);
-		
+		printMatrix(gp.getPredVar());
 //		DoubleMatrix trainOut = subVector(0, noData-noTestData, samples);
 //		GP gpnew = new GP(trainIn.dup(), testIn.dup(), P.dup(), cf, nl);
 //		gpnew.setup(trainOut);

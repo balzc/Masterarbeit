@@ -25,8 +25,7 @@ public class EVMDP {
 	private double qOffset;
 	private double tSlope;
 	private double tOffset;
-	private double vTBase;
-	private double vQBase;
+	private double vMin;
 	private int tStart;
 	private int tCrit;
 	private double sdScale;
@@ -47,50 +46,52 @@ public class EVMDP {
 
 		this.predMeanPrice = predMeanPrice;
 		this.predCovPrice = predCovPrice;
-		this.deltaPrice = 40;//deltaPrice;
+		this.deltaPrice = deltaPrice;
 		this.numSteps = numSteps;
 		this.sdScale = 5;
-		this.qMax = 25;
+		this.qMax = 75;
 		this.qRequired = 10;
-		this.qSlope = 2;
+		this.qSlope = 0.001;
 		this.tOffset = 0;
-		this.tStart = 80;
-		this.tCrit = 82;
-		this.vTBase = 10;
-		this.tSlope = -(vTBase)/(tCrit-tStart);
-		this.vQBase = 10;
-
+		this.tStart = 92;
+		this.tCrit = 94;
+		this.vMin = 200;
+		this.tSlope = -(vMin)/(tCrit-tStart);		
+		this.qOffset = 0;
 	}
 
 	public void work(){
-		//		System.out.println(rewards(18, 0, 100) + " " + rewards(16, 0, 100) + " " + rewards(17, 1, 100));
+		System.out.println("rewardtest " + rewards(18, 0, 100,85) + " " + rewards(16, 0, 100,85) + " " + rewards(17, 1, 100,1));
 		computePrices();
 
 
 		computeLoad();
 		computeProbabilityTables();
+		printPrices();
 
 		solveMDP();
+//		printQvals();
+		
 		//		printOptPolicy();
 	}
 
 	//probability table: priceProb[i][j][k] = Pr(prices[i] | prices[j], timestep=k)
 	public double computePriceProb(int i, int j, int k){
-//		double m = predMeanPrice.get(k) + predCovPrice.get(k,k-1)/predCovPrice.get(k-1,k-1)*(prices[j] - predMeanPrice.get(k-1));
-//		double s = Math.sqrt(predCovPrice.get(k,k) - predCovPrice.get(k,k-1)*predCovPrice.get(k,k-1)/predCovPrice.get(k-1,k-1));
-//
-//		double y1 = prices[i] - 0.5*deltaPrice;
-//		double y2 = prices[i] + 0.5*deltaPrice;
-//		return 0.5*(Erf.erf( (y1-m)/(Math.sqrt(2)*s), (y2-m)/(Math.sqrt(2)*s)) );
-				if(prices[i] == 0 && (k < 24 ) ){
-					return 1;
-				}else if(prices[i] == 0 && (k < 48 && k > 23) ){
-					return 1;
-				} else if(prices[i] == 40 && (k < 96 && k >= 48) ){
-					return 1;
-				} else {
-					return 0;
-				}
+		double m = predMeanPrice.get(k) + predCovPrice.get(k,k-1)/predCovPrice.get(k-1,k-1)*(prices[j] - predMeanPrice.get(k-1));
+		double s = Math.sqrt(predCovPrice.get(k,k) - predCovPrice.get(k,k-1)*predCovPrice.get(k,k-1)/predCovPrice.get(k-1,k-1));
+
+		double y1 = prices[i] - 0.5*deltaPrice;
+		double y2 = prices[i] + 0.5*deltaPrice;
+		return 0.5*(Erf.erf( (y1-m)/(Math.sqrt(2)*s), (y2-m)/(Math.sqrt(2)*s)) );
+//		if(prices[i] == 40 && (k < 24 ) ){
+//			return 1;
+//		}else if(prices[i] == 40 && (k < 48 && k > 23) ){
+//			return 1;
+//		} else if(prices[i] == 0 && (k < 96 && k >= 48) ){
+//			return 1;
+//		} else {
+//			return 0;
+//		}
 
 	}
 	public double computeLoadProb(int i, int j, int m){
@@ -119,8 +120,8 @@ public class EVMDP {
 
 
 	public void computePrices(){
-		double minPrice = 0;//findMinimumPrice();
-		double maxPrice = 40;//findMaximumPrice();
+		double minPrice = findMinimumPrice();
+		double maxPrice = findMaximumPrice();
 
 		minPrice = Math.floor((minPrice/deltaPrice + 0.5))*deltaPrice;
 
@@ -157,22 +158,29 @@ public class EVMDP {
 	}
 
 
-	public double rewards(int load, int action, double price, int time){
+	public double rewards(int q, int action, double price, int t){
 		double cost = price * action;
-		if(load < qRequired){
-			return 0 - cost;
+		if(t <= tStart){
+			if(q + action == qRequired){
+				return vMin - cost;
+			} else if (q < qMax && q >= qRequired ){
+				return action*qSlope - cost;
+			} else {
+				return - cost;
+			}
+
+		}else if(t < tCrit){
+			if(q + action == qRequired){
+				return vMin - cost - tSlope;
+			} else if (q < qMax && q >= qRequired ){
+				return action*qSlope - cost -tSlope;
+			} else {
+				return - cost - tSlope;
+			}
+		}else {
+			return - cost;
 		}
-		else {
-			if(time >= tStart && time <= tCrit){
-				return (qOffset + qSlope*time)*(tOffset + tSlope*time) - cost;
-			}
-			else if(time < tStart){
-				return (qOffset + qSlope*time)*vTBase - cost;
-			}
-			else {
-				return 0 - cost;
-			}
-		}
+		
 	}
 
 
@@ -257,16 +265,15 @@ public class EVMDP {
 			for (int j = 0; j<loads.length; j++){
 				for(int a = 0; a<actions.length; a++){
 					loadProb[i][j][a] = computeLoadProb(i, j, a);
-					//						System.out.print(internalTempProb[i][j][k][a] + " ");
+//											System.out.print(loadProb[i][j][a] + " ");
 
 				}
-				//					System.out.println();
+//									System.out.println();
 
 
-				//				System.out.println();
 
 			}		
-			//			System.out.println();
+//						System.out.println();
 
 		}
 		//		System.out.println();
@@ -366,20 +373,20 @@ public class EVMDP {
 		//			System.out.println();
 		//		}
 
-		printLoads();
-		printPrices();
-		System.out.println("test " );
-		for(int k = numSteps-1; k >0; k--){
-			for(int j = 0; j < prices.length; j++){
-				System.out.print(k + " [ ");
-				for(int i = 12; i<loads.length;i++){
-					System.out.print(i+ ":" + qValues[k][j][i]+ " ");
-
-				}
-				System.out.println(" ]");
-			}
-		}
-		System.out.println("testend");
+//		printLoads();
+//		printPrices();
+//		System.out.println("test " );
+//		for(int k = numSteps-1; k >0; k--){
+//			for(int j = 0; j < prices.length; j++){
+//				System.out.print(k + " [ ");
+//				for(int i = 12; i<loads.length;i++){
+//					System.out.print(i+ ":" + qValues[k][j][i]+ " ");
+//
+//				}
+//				System.out.println(" ]");
+//			}
+//		}
+//		System.out.println("testend");
 
 	}
 
@@ -406,7 +413,7 @@ public class EVMDP {
 		for(int t = 0; t <numSteps; t++){
 			for(int p = 0; p < prices.length; p++){
 				for(int it = 0; it < loads.length; it++){
-					System.out.print(prices[p] + " " + loads[it] + " " +  qValues[t][p][it]+ "; ");
+					System.out.print(t + " "+ prices[p] + " " + loads[it] + " " +  qValues[t][p][it]+ "; ");
 
 				}
 			}
