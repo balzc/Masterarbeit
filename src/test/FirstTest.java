@@ -1,5 +1,6 @@
 package test;
-
+import org.junit.Test;
+import static org.junit.Assert.*;
 public class FirstTest {
 	/* train GP
 	 * predict for following days
@@ -12,4 +13,11 @@ public class FirstTest {
 	public static void doTest(){
 		
 	}
+	
+	@Test
+    public void testEVMDP() {
+		
+
+
+    }
 }
