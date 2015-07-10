@@ -28,7 +28,9 @@ public class BayesInf {
 	
 	}
 	public void setup(){
-
+//		System.out.println("setup");
+//		Main.printMatrix(x);
+//		Main.printMatrix(y);
 		priorCovar = DoubleMatrix.eye(x.rows).mul(var);
 		DoubleMatrix E = DoubleMatrix.eye(x.rows);
 		DoubleMatrix priorCovarInv = Solve.solvePositive(priorCovar, E);

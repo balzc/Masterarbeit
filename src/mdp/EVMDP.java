@@ -16,7 +16,7 @@ public class EVMDP {
 
 	private int[] actions = {0,1};
 	private double[] prices;
-	private int[] loads;
+	private double[] loads;
 	private double deltaPrice;
 	private int qMax;
 	private int qMin;
@@ -28,14 +28,14 @@ public class EVMDP {
 	private int tCrit;
 	private double sdScale;
 
-
-
 	private boolean PROFILING = false;
 	private double time;
 	private double[][][] priceProb;
 	private double[][][] loadProb;
 	private int numSteps;
 
+	private double wattPerUnit = 44;
+	
 	double tol = 0.0001;
 
 
@@ -112,10 +112,10 @@ public class EVMDP {
 	}
 	public double computeLoadProb(int i, int j, int m){
 
-		if(i-j == m){
+		if(i-j == m*wattPerUnit){
 			return 1;
 		}
-		else if (i == qMax && j + m > qMax){
+		else if (i == qMax && j + m*wattPerUnit > qMax){
 			return 1;
 		}
 		else{
@@ -126,9 +126,9 @@ public class EVMDP {
 
 
 	public void computeLoad(){
-		this.loads = new int[qMax+1];
+		this.loads = new double[qMax+1];
 		for (int i = 0; i<qMax+1; i++){
-			loads[i] = i;
+			loads[i] = i*wattPerUnit;
 		}
 	}
 
@@ -174,13 +174,13 @@ public class EVMDP {
 	}
 
 
-	public double rewards(int q, int action, double price, int t){
-		double cost = price * action;
-		return value(q+action,action,t+1)-value(q,action,t)-cost;
+	public double rewards(double q, int action, double price, int t){
+		double cost = price * action * wattPerUnit;
+		return value(q+action * wattPerUnit,t+1)-value(q,t)-cost;
 
 	}
 
-	public double value(int q, int action, int t){
+	public double value(double q, int t){
 		if(q >= qRequired){
 			if(t < tStart){
 				return (vMin + qSlope*(q-qRequired));
@@ -212,7 +212,17 @@ public class EVMDP {
 		return index;
 	}
 
+	public int loadToState(double load){
+		int index = -1;
 
+		for(int i = 0; i<loads.length; i++){
+			if (Math.abs(loads[i]-load)<tol) {
+				index = i;
+				break;
+			}
+		}
+		return index;
+	}
 
 
 
@@ -222,12 +232,12 @@ public class EVMDP {
 	}
 
 
-	public int updateLoad(int initialLoad, int action){
+	public double updateLoad(double initialLoad, int action){
 		if(initialLoad + action > qMax){
 			return qMax;
 		}
 		else{
-			return initialLoad + action;
+			return initialLoad + action*wattPerUnit;
 		}
 
 	}

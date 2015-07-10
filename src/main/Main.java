@@ -8,6 +8,8 @@ import org.jblas.DoubleMatrix;
 
 
 
+
+import simulation.Simulation;
 import util.FileHandler;
 import cov.*;
 import gp.GP;
@@ -15,17 +17,23 @@ import gp.GP;
 public class Main {
 
 	public static void main(String[] args) {
-		testEVMDP("/users/balz/documents/workspace/masterarbeit/data/prices2.csv", "/users/balz/documents/workspace/masterarbeit/data/out.csv");
+		testSim();
+//		testEVMDP("/users/balz/documents/workspace/masterarbeit/data/prices2.csv", "/users/balz/documents/workspace/masterarbeit/data/out.csv");
 //		testBayes();
+	}
+	
+	public static void testSim(){
+		Simulation s = new Simulation();
+		s.work();
 	}
 	
 	public static void testBayes(){
 		DoubleMatrix x = DoubleMatrix.concatVertically((new DoubleMatrix(new double[] {1,1,1,1,1})).transpose(),(new DoubleMatrix(new double[] {1,2,3,4,5})).transpose());
 		DoubleMatrix y = new DoubleMatrix(new double[] {3,5,7,9,11});
 		double var = 0.05;
+		printMatrix(x);
+		printMatrix(y);
 		BayesInf bi = new BayesInf(x, y, var);
-		DoubleMatrix sam = bi.generateSamples(20, var);
-		printMatrix(sam);
 		bi.setup();
 		printMatrix(bi.getMean());
 	}
@@ -63,7 +71,7 @@ public class Main {
 		CovarianceFunction cf = a1;
 		int runs = 1;
 		double cumulativeU = 0;
-		int currentLoad = 0;
+		double currentLoad = 0;
 		int steps = 96;
 		int trainSetSize = 1;
 		int initialOffset = 0;
@@ -106,7 +114,7 @@ public class Main {
 			int tmp = initialOffset+steps*trainSetSize;
 			for(int o = tmp; o < tmp + steps; o++){
 //				System.out.println(o  + " " + testmdp.priceToState(predMeanPrices.get(o-tmp))+ " " +  currentLoad );
-				int action = testmdp.getOptPolicy()[o-tmp][testmdp.priceToState(predMeanPrices.get(o-tmp))][currentLoad];
+				int action = testmdp.getOptPolicy()[o-tmp][testmdp.priceToState(predMeanPrices.get(o-tmp))][testmdp.loadToState(currentLoad)];
 				cumulativeU += testmdp.rewards(currentLoad, action, priceSamples.get(o)+20,o);
 				currentLoad = testmdp.updateLoad(currentLoad, action);
 
