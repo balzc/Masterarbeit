@@ -18,14 +18,13 @@ public class EVMDP {
 	private double[] prices;
 	private double[] loads;
 	private double deltaPrice;
-	private int qMax;
-	private int qMin;
-	private int qRequired;
+	private double qMax;
+	private double qRequired;
 	private double qSlope;
 	private double tSlope;
 	private double vMin;
-	private int tStart;
-	private int tCrit;
+	private double tStart;
+	private double tCrit;
 	private double sdScale;
 
 	private boolean PROFILING = false;
@@ -58,7 +57,7 @@ public class EVMDP {
 		// deltat = (tcrit-tplug)/numsteps
 	}
 
-	public EVMDP(DoubleMatrix predMeanPrice, DoubleMatrix predCovPrice, double deltaPrice,	int numSteps, int qMax, int qRequired, double qSlope, int tStart, int tCrit, double vMin) {
+	public EVMDP(DoubleMatrix predMeanPrice, DoubleMatrix predCovPrice, double deltaPrice,	int numSteps, double qMax, double qRequired, double qSlope, double tStart, double tCrit, double vMin) {
 
 
 		this.predMeanPrice = predMeanPrice;
@@ -79,7 +78,7 @@ public class EVMDP {
 	
 	
 	public void work(){
-		//		System.out.println("rewardtest " + rewards(18, 0, 100,85) + " " + rewards(16, 0, 100,85) + " " + rewards(17, 1, 100,1));
+		System.out.println("rewardtest " + rewards(50*wattPerUnit, 0, 100,79) + " " + value(50*wattPerUnit, 79) + " " + value(50*wattPerUnit+wattPerUnit, 80));
 		computePrices();
 
 
@@ -126,7 +125,7 @@ public class EVMDP {
 
 
 	public void computeLoad(){
-		this.loads = new double[qMax+1];
+		this.loads = new double[(int)qMax+1];
 		for (int i = 0; i<qMax+1; i++){
 			loads[i] = i*wattPerUnit;
 		}
@@ -181,7 +180,7 @@ public class EVMDP {
 	}
 
 	public double value(double q, int t){
-		if(q >= qRequired){
+		if(q >= qRequired*wattPerUnit){
 			if(t < tStart){
 				return (vMin + qSlope*(q-qRequired));
 			}

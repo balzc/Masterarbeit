@@ -17,8 +17,8 @@ import gp.GP;
 public class Main {
 
 	public static void main(String[] args) {
-		testSim();
-//		testEVMDP("/users/balz/documents/workspace/masterarbeit/data/prices2.csv", "/users/balz/documents/workspace/masterarbeit/data/out.csv");
+//		testSim();
+		testEVMDP("/users/balz/documents/workspace/masterarbeit/data/prices2.csv", "/users/balz/documents/workspace/masterarbeit/data/out.csv");
 //		testBayes();
 	}
 	
