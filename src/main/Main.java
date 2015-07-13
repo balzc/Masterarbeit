@@ -74,7 +74,7 @@ public class Main {
 		double currentLoad = 0;
 		int steps = 96;
 		int trainSetSize = 1;
-		int initialOffset = 0;
+		int initialOffset = 96;
 		double[] loads = new double[runs*steps];
 		int[] actions = new int[runs*steps];
 
