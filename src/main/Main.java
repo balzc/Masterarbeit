@@ -114,8 +114,8 @@ public class Main {
 			int tmp = initialOffset+steps*trainSetSize;
 			for(int o = tmp; o < tmp + steps; o++){
 //				System.out.println(o  + " " + testmdp.priceToState(predMeanPrices.get(o-tmp))+ " " +  currentLoad );
-				int action = testmdp.getOptPolicy()[o-tmp][testmdp.priceToState(predMeanPrices.get(o-tmp))][testmdp.loadToState(currentLoad)];
-				cumulativeU += testmdp.rewards(currentLoad, action, priceSamples.get(o)+20,o);
+				int action = testmdp.getOptPolicy()[o-tmp][testmdp.priceToState(predMeanPrices.get(o-tmp))][testmdp.loadToState(currentLoad)][0];
+				cumulativeU += testmdp.rewards(currentLoad, action, priceSamples.get(o)+20,o,0);
 				currentLoad = testmdp.updateLoad(currentLoad, action);
 
 				loads[o-steps*trainSetSize-initialOffset] = currentLoad;

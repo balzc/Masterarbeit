@@ -61,12 +61,18 @@ public class Testing {
 		int runs = 1;
 		double cumulativeU = 0;
 		double currentLoad = 0;
-		int steps = 96;
+		int steps = 10;
 		int trainSetSize = 1;
 		int initialOffset = 0;
 		double[] loads = new double[runs*steps];
 		int[] actions = new int[runs*steps];
-
+		DoubleMatrix priceSimple1 = DoubleMatrix.ones(24).mul(40);
+		DoubleMatrix priceSimple2 = DoubleMatrix.ones(24).mul(40);
+		DoubleMatrix priceSimple3 = DoubleMatrix.ones(24).mul(0);
+		DoubleMatrix priceSimple4 = DoubleMatrix.ones(24).mul(0);
+		DoubleMatrix priceSimple = DoubleMatrix.concatVertically(priceSimple1, priceSimple2);
+		priceSimple = DoubleMatrix.concatVertically(priceSimple, priceSimple3);
+		priceSimple = DoubleMatrix.concatVertically(priceSimple, priceSimple4);
 		for(int i = 0; i < runs; i++){
 			double[] xTrain = new double[steps*trainSetSize];
 			for(int o = 0; o < steps*trainSetSize; o++){
@@ -96,8 +102,8 @@ public class Testing {
 			int tmp = initialOffset+steps*trainSetSize;
 			for(int o = tmp; o < tmp + steps; o++){
 //				System.out.println(o  + " " + testmdp.priceToState(predMeanPrices.get(o-tmp))+ " " +  currentLoad );
-				int action = testmdp.getOptPolicy()[o-tmp][testmdp.priceToState(predMeanPrices.get(o-tmp))][testmdp.loadToState(currentLoad)];
-				cumulativeU += testmdp.rewards(currentLoad, action, priceSamples.get(o)+20,o);
+				int action = testmdp.getOptPolicy()[o-tmp][testmdp.priceToState(predMeanPrices.get(o-tmp))][testmdp.loadToState(currentLoad)][0];
+				cumulativeU += testmdp.rewards(currentLoad, action, priceSamples.get(o)+20,o,0);
 				currentLoad = testmdp.updateLoad(currentLoad, action);
 
 				loads[o-steps*trainSetSize-initialOffset] = currentLoad;

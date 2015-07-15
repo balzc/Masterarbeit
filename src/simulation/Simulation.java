@@ -82,6 +82,8 @@ public class Simulation {
 		
 			Random r = new Random();
 			// sample the observed values from normal distributions
+			//!!! values need to be consistent
+			// qmin, tstart & tcrit actual values
 			Double vmin = sampleFromNormal(vmintrue, sd);
 			Double qmin = sampleFromNormal(qmintrue, sd);
 			Double tstart = sampleFromNormal(tstarttrue, sd);
@@ -116,12 +118,17 @@ public class Simulation {
 			priceGP.setup(yTrainMPrices);
 			DoubleMatrix predMeanPrices = priceGP.getPredMean().add(20);
 			DoubleMatrix predVarPrices = priceGP.getPredVar();
+			// setup mdp
 			EVMDP mdp = new EVMDP(predMeanPrices, predVarPrices, deltaPrice, numSteps, qmax, qrequired, mqLearned, tstart, tcrit, vminLearned);
 			mdp.work();
 			// charge the vehicle according to policy and update total utility
+			
+			// sample tdep and load till tdep, calculate utility until tdep
 			for(int o = 0; o < numSteps; o++){
-				int action = mdp.getOptPolicy()[o][mdp.priceToState(predMeanPrices.get(o))][mdp.loadToState(currentLoad)];
-				totalUtility += mdp.rewards(currentLoad, action, priceSamples.get(o)+20,o);
+				// pricesSamples instead of predmean
+				int action = mdp.getOptPolicy()[o][mdp.priceToState(predMeanPrices.get(o))][mdp.loadToState(currentLoad)][0];
+				// cost summation, save for every day
+				totalUtility += mdp.rewards(currentLoad, action, priceSamples.get(o)+20,o,0);
 				currentLoad = mdp.updateLoad(currentLoad, action);
 
 				loads[o] = currentLoad;

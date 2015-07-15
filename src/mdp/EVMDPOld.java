@@ -8,9 +8,9 @@ import org.jblas.DoubleMatrix;
 import main.Main;
 import gp.GP;
 
-public class EVMDP {
-	private int[][][][] optPolicy;
-	private double[][][][] qValues;
+public class EVMDPOld {
+	private int[][][] optPolicy;
+	private double[][][] qValues;
 	private DoubleMatrix predMeanPrice;
 	private DoubleMatrix predCovPrice;
 
@@ -25,16 +25,11 @@ public class EVMDP {
 	private double tStart;
 	private double tCrit;
 	private double sdScale;
-	
-	private double tMean;
-	private double tSD;
-	
+
 	private boolean PROFILING = false;
 	private double time;
 	private double[][][] priceProb;
 	private double[][][] loadProb;
-	private double[][][] endStateProb;
-
 	private int numSteps;
 
 	private double wattPerUnit = 1;
@@ -42,9 +37,9 @@ public class EVMDP {
 	double tol = 0.0001;
 
 
-	public EVMDP(DoubleMatrix predMeanPrice, DoubleMatrix predCovPrice, double deltaPrice,	int numSteps) {
+	public EVMDPOld(DoubleMatrix predMeanPrice, DoubleMatrix predCovPrice, double deltaPrice,	int numSteps) {
 
-		double value = 30.;
+
 		this.predMeanPrice = predMeanPrice;
 		this.predCovPrice = predCovPrice;
 		this.deltaPrice = deltaPrice;
@@ -52,16 +47,15 @@ public class EVMDP {
 		this.sdScale = deltaPrice;
 		this.qMax = 2;
 		this.qRequired = 1;
-		this.qSlope = value*wattPerUnit;
-		this.tStart = 6;
-		this.tCrit = 9;
-		this.vMin = value*wattPerUnit*qRequired;
-		this.tMean = 6;
-		this.tSD = 1;
+		this.qSlope = 10*wattPerUnit;
+		this.tStart = 5;
+		this.tCrit = 6;
+		this.vMin = 10*wattPerUnit*qRequired;
+		
 		// deltat = (tcrit-tplug)/numsteps
 	}
 
-	public EVMDP(DoubleMatrix predMeanPrice, DoubleMatrix predCovPrice, double deltaPrice,	int numSteps, double qMax, double qRequired, double qSlope, double tStart, double tCrit, double vMin) {
+	public EVMDPOld(DoubleMatrix predMeanPrice, DoubleMatrix predCovPrice, double deltaPrice,	int numSteps, double qMax, double qRequired, double qSlope, double tStart, double tCrit, double vMin) {
 
 
 		this.predMeanPrice = predMeanPrice;
@@ -75,13 +69,13 @@ public class EVMDP {
 		this.tStart = tStart;
 		this.tCrit = tCrit;
 		this.vMin = vMin;
-		//!!! set tmean and tsd
+		
 		// deltat = (tcrit-tplug)/numsteps
 	}
 	
 	
 	public void work(){
-		System.out.println("rewardtest ");
+		System.out.println("rewardtest " + (rewards(1, 0, 21,5)) + " " + value(0, 2) + " " + value(1, 2));
 		
 		computePrices();
 
@@ -93,19 +87,7 @@ public class EVMDP {
 		printQvals();
 //		printOptPolicy();
 	}
-	public double computeEndStateProb(int i, int j, int t){
-		if(i == j && i == 0){
-			return 1;
-		} else if (i == j && i == 1){
-			return 0;
-		} else if(i == 1 && j == 0){
-			return 0.5*(1 + Erf.erf((t-tMean)/(tSD * Math.sqrt(2))));
-		} else {
-			return 0;
-		}
-	}
-	
-	
+
 	//probability table: priceProb[i][j][k] = Pr(prices[i] | prices[j], timestep=k)
 	public double computePriceProb(int i, int j, int k){
 		double m = predMeanPrice.get(k) + predCovPrice.get(k,k-1)/predCovPrice.get(k-1,k-1)*(prices[j] - predMeanPrice.get(k-1));
@@ -189,15 +171,10 @@ public class EVMDP {
 	}
 
 
-	public double rewards(double q, int action, double price, int t, int endState){
+	public double rewards(double q, int action, double price, int t){
 		double cost = price * action * wattPerUnit;
 //		if(value(q+action * wattPerUnit,t+1) >= value(q,t)){
-		if(endState == 1){
-			return value(q,t);
-		}
-		else {
-			return -cost;
-		}
+			return value(q+action * wattPerUnit,t+1)-value(q,t)-cost;
 //		}
 //		else{
 //			return 0;
@@ -277,7 +254,6 @@ public class EVMDP {
 		}
 		//priceProb[i][j][k] = Pr(price[i]| price[j], timestep = k+1)
 		this.priceProb = new double[prices.length][prices.length][numSteps-1];
-		this.endStateProb = new double[2][2][numSteps-1];
 		//internalTempProb[i][j][k] = Pr(internalTemp[i] | internalTemp[j], externalTemp[k], actions[m])
 		this.loadProb = new double[loads.length][loads.length][actions.length];
 		//externalTempProb[i][j][k] = Pr(exernalTemp[i] | externalTemp[j], timestep= k+1)
@@ -329,13 +305,7 @@ public class EVMDP {
 
 		}
 		//		System.out.println();
-		for(int i = 0; i < 2; i++){
-			for(int j = 0; j < 2; j++){
-				for(int t = 0; t < numSteps-1; t++){
-					endStateProb[i][j][t] = computeEndStateProb(i, j, t);
-				}
-			}
-		}
+
 		//external temp
 
 		if(PROFILING){
@@ -346,15 +316,15 @@ public class EVMDP {
 
 	public void solveMDP()
 	{	
-		qValues = new double[numSteps][prices.length][loads.length][2];
+		qValues = new double[numSteps][prices.length][loads.length];
 
-		optPolicy = new int[numSteps][prices.length][loads.length][2];
+		optPolicy = new int[numSteps][prices.length][loads.length];
 		for(int p = 0; p < prices.length; p++){
 			for(int q = 0; q < loads.length; q++){
 
 
-				double temp = rewards(loads[q],0,prices[p],numSteps-1,0);
-				qValues[numSteps-1][p][q][0] = temp;
+				double temp = rewards(loads[q],0,prices[p],numSteps-1);
+				qValues[numSteps-1][p][q] = temp;
 
 
 
@@ -365,13 +335,12 @@ public class EVMDP {
 		for(int t = numSteps-2; t >-1; t--){
 			for(int p = 0; p < prices.length; p++){
 				for(int q = 0; q < loads.length; q++){
-					for(int e = 0; e < 2; e++){
 					double currentMax = Double.NEGATIVE_INFINITY;
 					int currentBestAction = 0;
 					int counter[] = {0,0};
 
 					for(int a = 0; a < actions.length; a++){
-						double qval = rewards(loads[q],a,prices[p],t,e);
+						double qval = rewards(loads[q],a,prices[p],t);
 						//							System.out.println("action: " +a);
 						double sumextt = 0;
 						double sumintt = 0;
@@ -379,22 +348,19 @@ public class EVMDP {
 						double sumtot = 0;
 						for(int pn = 0; pn < prices.length; pn++){
 							for(int qn = 0; qn < loads.length; qn++){
-								for(int en = 0; en < 2; en++){
-								qval += loadProb[qn][q][a]*priceProb[pn][p][t]*qValues[t+1][pn][qn][en]*endStateProb[en][e][t];
-								}
+								qval += loadProb[qn][q][a]*priceProb[pn][p][t]*qValues[t+1][pn][qn];
 							}
 						}						
 						if(qval > currentMax){
 							currentMax = qval;
 							currentBestAction = a;
-							qValues[t][p][q][e] = qval;
-							optPolicy[t][p][q][e] = currentBestAction;
+							qValues[t][p][q] = qval;
+							optPolicy[t][p][q] = currentBestAction;
 
 
 
 						} 
 					}
-				}
 
 
 				}
@@ -411,8 +377,8 @@ public class EVMDP {
 
 			for(int p = 0; p < prices.length; p++){
 				for(int it = 0; it < loads.length; it++){
-					System.out.print(prices[p] + " " + loads[it] + " "  + optPolicy[t][p][it][0] + "; ");
-					sum += optPolicy[t][p][it][0];
+					System.out.print(prices[p] + " " + loads[it] + " "  + optPolicy[t][p][it] + "; ");
+					sum += optPolicy[t][p][it];
 
 				}
 				System.out.println();
@@ -426,8 +392,8 @@ public void printQvals(){
 	for(int t = 0; t <numSteps; t++){
 		for(int p = 0; p < prices.length; p++){
 			for(int it = 0; it < loads.length; it++){
-				if(qValues[t][p][it][0] != 0){
-					System.out.print(t + " "+ prices[p] + " " + loads[it] + " " +  qValues[t][p][it][0]+ "; ");
+				if(qValues[t][p][it] != 0){
+					System.out.print(t + " "+ prices[p] + " " + loads[it] + " " +  qValues[t][p][it]+ "; ");
 				}
 			}
 			System.out.println();
@@ -460,19 +426,19 @@ public void printLoads(){
 
 // getters and setters
 
-public int[][][][] getOptPolicy() {
+public int[][][] getOptPolicy() {
 	return optPolicy;
 }
 
-public void setOptPolicy(int[][][][] optPolicy) {
+public void setOptPolicy(int[][][] optPolicy) {
 	this.optPolicy = optPolicy;
 }
 
-public double[][][][] getqValues() {
+public double[][][] getqValues() {
 	return qValues;
 }
 
-public void setqValues(double[][][][] qValues) {
+public void setqValues(double[][][] qValues) {
 	this.qValues = qValues;
 }
 
