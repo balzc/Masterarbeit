@@ -61,15 +61,15 @@ public class Testing {
 		int runs = 1;
 		double cumulativeU = 0;
 		double currentLoad = 0;
-		int steps = 10;
+		int steps = 12;
 		int trainSetSize = 1;
 		int initialOffset = 0;
 		double[] loads = new double[runs*steps];
 		int[] actions = new int[runs*steps];
-		DoubleMatrix priceSimple1 = DoubleMatrix.ones(24).mul(40);
-		DoubleMatrix priceSimple2 = DoubleMatrix.ones(24).mul(40);
-		DoubleMatrix priceSimple3 = DoubleMatrix.ones(24).mul(0);
-		DoubleMatrix priceSimple4 = DoubleMatrix.ones(24).mul(0);
+		DoubleMatrix priceSimple1 = DoubleMatrix.ones(3).mul(20);
+		DoubleMatrix priceSimple2 = DoubleMatrix.ones(3).mul(30);
+		DoubleMatrix priceSimple3 = DoubleMatrix.ones(3).mul(10);
+		DoubleMatrix priceSimple4 = DoubleMatrix.ones(3).mul(10);
 		DoubleMatrix priceSimple = DoubleMatrix.concatVertically(priceSimple1, priceSimple2);
 		priceSimple = DoubleMatrix.concatVertically(priceSimple, priceSimple3);
 		priceSimple = DoubleMatrix.concatVertically(priceSimple, priceSimple4);
@@ -92,22 +92,22 @@ public class Testing {
 //			printMatrix(xTestM);
 			GP priceGP = new GP(xTrainM,xTestM,P,cf,nl);
 			priceGP.setup(yTrainMPrices);
-			DoubleMatrix predMeanPrices = priceGP.getPredMean().add(20);
+			DoubleMatrix predMeanPrices = priceSimple;//priceGP.getPredMean().add(20);
 			DoubleMatrix predVarPrices = priceGP.getPredVar();
-			EVMDP testmdp = new EVMDP(predMeanPrices,predVarPrices, .5,steps);
+			EVMDP testmdp = new EVMDP(predMeanPrices,predVarPrices,10,steps);
 
 			testmdp.work();
 			
 			// heat according to policy and update cumulative utility
 			int tmp = initialOffset+steps*trainSetSize;
-			for(int o = tmp; o < tmp + steps; o++){
-//				System.out.println(o  + " " + testmdp.priceToState(predMeanPrices.get(o-tmp))+ " " +  currentLoad );
-				int action = testmdp.getOptPolicy()[o-tmp][testmdp.priceToState(predMeanPrices.get(o-tmp))][testmdp.loadToState(currentLoad)][0];
+			for(int o = 0; o < steps; o++){
+				System.out.println("O is " +o  + " " + testmdp.priceToState(predMeanPrices.get(o))+ " " +  currentLoad );
+				int action = testmdp.getOptPolicy()[o][testmdp.priceToState(predMeanPrices.get(o))][testmdp.loadToState(currentLoad)][0];
 				cumulativeU += testmdp.rewards(currentLoad, action, priceSamples.get(o)+20,o,0);
 				currentLoad = testmdp.updateLoad(currentLoad, action);
 
-				loads[o-steps*trainSetSize-initialOffset] = currentLoad;
-				actions[o-steps*trainSetSize-initialOffset] = action;
+				loads[o] = currentLoad;
+				actions[o] = action;
 			}
 			initialOffset += steps;
 			if(i > 0){
