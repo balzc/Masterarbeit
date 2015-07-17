@@ -108,8 +108,9 @@ public class GP {
 //
 //		Main.printMatrix(temp);
 		DoubleMatrix l = Decompose.cholesky(temp).transpose();
-
-
+//		System.out.println("Y");
+//		Main.printMatrix(trainOut);
+//		Main.printMatrix(l);
 		DoubleMatrix alpha = Solve.solve( l.transpose(),Solve.solve(l, trainOut));
 //		System.out.println("Alpha2");
 //

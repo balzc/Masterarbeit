@@ -19,6 +19,7 @@ public class EVMDP {
 	private double[] loads;
 	private double deltaPrice;
 	private double qMax;
+	private double qInitial;
 	private double qRequired;
 	private double qSlope;
 	private double vMin;
@@ -50,18 +51,19 @@ public class EVMDP {
 		this.deltaPrice = deltaPrice;
 		this.numSteps = numSteps;
 		this.sdScale = deltaPrice;
-		this.qMax = 3;//3
+		this.qMax = 5;//3
 		this.qRequired = 2;//2
 		this.qSlope = 22;//15
 		this.tStart = 5;//6
 		this.tCrit = 7;//9
 		this.vMin = 46;//14*qRequired
 		this.tMean = 5;//5
-		this.tSD = 0.01;//0.01
+		this.tSD = 0.5;//0.01
+		this.qInitial = 1;
 		// deltat = (tcrit-tplug)/numsteps
 	}
 
-	public EVMDP(DoubleMatrix predMeanPrice, DoubleMatrix predCovPrice, double deltaPrice,	int numSteps, double qMax, double qRequired, double qSlope, double tStart, double tCrit, double vMin) {
+	public EVMDP(DoubleMatrix predMeanPrice, DoubleMatrix predCovPrice, double deltaPrice,	int numSteps, double qMax, double qRequired, double qSlope, double tStart, double tCrit, double vMin, double tmean, double tsd, double qinitial) {
 
 
 		this.predMeanPrice = predMeanPrice;
@@ -75,7 +77,9 @@ public class EVMDP {
 		this.tStart = tStart;
 		this.tCrit = tCrit;
 		this.vMin = vMin;
-		//!!! set tmean and tsd
+		this.tMean = tmean;
+		this.tSD = tsd;
+		this.qInitial = qinitial;
 		// deltat = (tcrit-tplug)/numsteps
 	}
 	
@@ -87,16 +91,16 @@ public class EVMDP {
 
 		computeLoad();
 		computeProbabilityTables();
-		printLoads();
 		solveMDP();
-		printQvals();
-		System.out.println("rewardtest " + rewards(2, 0, 10, 8, 1));
-
-		for(int i = 0; i < numSteps-1; i++){
-			System.out.println(i + ": " + endStateProb[1][0][i] );
-		}
-		printPrices();
-		printOptPolicy();
+//		printQvals();
+//		System.out.println("rewardtest " + rewards(2, 0, 10, 8, 1));
+//		printLoads();
+//
+//		for(int i = 0; i < numSteps-1; i++){
+//			System.out.println(i + ": " + endStateProb[1][0][i] );
+//		}
+//		printPrices();
+//		printOptPolicy();
 	}
 	public double computeEndStateProb(int i, int j, int t){
 		if(i == j && i == 0){
@@ -104,16 +108,16 @@ public class EVMDP {
 		} else if (i == j && i == 1){
 			return 0;
 		} else if(i == 1 && j == 0){
-			if(Math.abs(t - tMean) < 0.001){
-				return 0.5;
-			}
-			else if(Math.abs(t - tMean)-1 < 0.001){
-				return 0.25;
-			}
-			else {
-				return 0;
-			}
-			//return 0.5*(1 + Erf.erf((t-tMean)/(tSD * Math.sqrt(2))));
+//			if(Math.abs(t - tMean) < 0.001){
+//				return 0.5;
+//			}
+//			else if(Math.abs(t - tMean)-1 < 0.001){
+//				return 0.25;
+//			}
+//			else {
+//				return 0;
+//			}
+			return 0.5*(1 + Erf.erf(((t+0.5)-tMean)/(tSD * Math.sqrt(2))))-0.5*(1 + Erf.erf(((t-0.5)-tMean)/(tSD * Math.sqrt(2))));
 		} else {
 			return 0;
 		}
@@ -122,23 +126,23 @@ public class EVMDP {
 	
 	//probability table: priceProb[i][j][k] = Pr(prices[i] | prices[j], timestep=k)
 	public double computePriceProb(int i, int j, int k){
-//		double m = predMeanPrice.get(k) + predCovPrice.get(k,k-1)/predCovPrice.get(k-1,k-1)*(prices[j] - predMeanPrice.get(k-1));
-//		double s = Math.sqrt(predCovPrice.get(k,k) - predCovPrice.get(k,k-1)*predCovPrice.get(k,k-1)/predCovPrice.get(k-1,k-1));
-//
-//		double y1 = prices[i] - 0.5*deltaPrice;
-//		double y2 = prices[i] + 0.5*deltaPrice;
-//		return 0.5*(Erf.erf( (y1-m)/(Math.sqrt(2)*s), (y2-m)/(Math.sqrt(2)*s)) );
-				if(prices[i] == 20 && (k < 3 ) ){
-					return 1;
-				}else if(prices[i] == 30 && (k < 6 && k > 2) ){
-					return 1;
-				} else if(prices[i] == 10 && (k < 9 && k > 5) ){
-					return 1;
-				} else if(prices[i] == 10 && (k < 12 && k > 8) ){
-					return 1;
-				} else {
-					return 0;
-				}
+		double m = predMeanPrice.get(k) + predCovPrice.get(k,k-1)/predCovPrice.get(k-1,k-1)*(prices[j] - predMeanPrice.get(k-1));
+		double s = Math.sqrt(predCovPrice.get(k,k) - predCovPrice.get(k,k-1)*predCovPrice.get(k,k-1)/predCovPrice.get(k-1,k-1));
+
+		double y1 = prices[i] - 0.5*deltaPrice;
+		double y2 = prices[i] + 0.5*deltaPrice;
+		return 0.5*(Erf.erf( (y1-m)/(Math.sqrt(2)*s), (y2-m)/(Math.sqrt(2)*s)) );
+//				if(prices[i] == 20 && (k < 3 ) ){
+//					return 1;
+//				}else if(prices[i] == 30 && (k < 6 && k > 2) ){
+//					return 1;
+//				} else if(prices[i] == 10 && (k < 9 && k > 5) ){
+//					return 1;
+//				} else if(prices[i] == 10 && (k < 12 && k > 8) ){
+//					return 1;
+//				} else {
+//					return 0;
+//				}
 
 	}
 	public double computeLoadProb(int i, int j, int m){
@@ -157,9 +161,9 @@ public class EVMDP {
 
 	// Tested, Works as intended
 	public void computeLoad(){
-		this.loads = new double[(int)qMax+1];
-		for (int i = 0; i<qMax+1; i++){
-			loads[i] = i*wattPerUnit;
+		this.loads = new double[(int)(qMax-qInitial+1)];
+		for (int i = 0; i<qMax-qInitial+1; i++){
+			loads[i] = qInitial + i * wattPerUnit;
 		}
 	}
 
@@ -167,8 +171,8 @@ public class EVMDP {
 
 	// Tested, Works as intended
 	public void computePrices(){
-		double minPrice = 10;//findMinimumPrice();
-		double maxPrice = 30;//findMaximumPrice();
+		double minPrice = findMinimumPrice();
+		double maxPrice = findMaximumPrice();
 
 		minPrice = Math.floor((minPrice/deltaPrice + 0.5))*deltaPrice;
 
@@ -393,16 +397,18 @@ public class EVMDP {
 							double sumintt = 0;
 							double sump = 0;
 							double sumtot = 0;
-							for(int pn = 0; pn < prices.length; pn++){
-								for(int qn = 0; qn < loads.length; qn++){
-									for(int en = 0; en < 2; en++){
-//										if(t == 2 && loadProb[qn][q][a]*priceProb[pn][p][t]*qValues[t+1][pn][qn][en]*endStateProb[en][e][t+1] > 0){
-//											System.out.println("a test " + qn + " " + q + " p " + pn + " " + p + " " + loadProb[qn][q][a]*priceProb[pn][p][t]*qValues[t+1][pn][qn][en]*endStateProb[en][e][t+1]);
-//										}
-										qval += loadProb[qn][q][a]*priceProb[pn][p][t]*qValues[t+1][pn][qn][en]*endStateProb[en][e][t+1];
+							if(e != 1){
+								for(int pn = 0; pn < prices.length; pn++){
+									for(int qn = 0; qn < loads.length; qn++){
+										for(int en = 0; en < 2; en++){
+											//										if(t == 2 && loadProb[qn][q][a]*priceProb[pn][p][t]*qValues[t+1][pn][qn][en]*endStateProb[en][e][t+1] > 0){
+											//											System.out.println("a test " + qn + " " + q + " p " + pn + " " + p + " " + loadProb[qn][q][a]*priceProb[pn][p][t]*qValues[t+1][pn][qn][en]*endStateProb[en][e][t+1]);
+											//										}
+											qval += loadProb[qn][q][a]*priceProb[pn][p][t]*qValues[t+1][pn][qn][en]*endStateProb[en][e][t+1];
+										}
 									}
-								}
-							}						
+								}	
+							}
 							if(qval > currentMax){
 								currentMax = qval;
 								currentBestAction = a;
