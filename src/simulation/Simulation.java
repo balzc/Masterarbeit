@@ -31,28 +31,33 @@ public class Simulation {
 		 * calculate Utility
 		 */
 		// user intrinsic parameters
-		double vmintrue = 600.;
-		double qmintrue = 10.;
-		double tstarttrue = 15.;
-		double tcrittrue = 18.;
-		double mqtrue = 60.;
-		double sd = 0.05;
-		double var = sd*sd;
+		double vminTrue = 300.;
+		double qminTrue = 10.;
+		double tstartTrue = 15.;
+		double tcritTrue = 18.;
+		double mqTrue = 30.;
+		double bayesInfSD = 0.05;
+		double vminSD = 0.05;
+		double mqSD = 0.05;
+		double tdepTrueSD = 0.05;
+		double bayesInfVar = bayesInfSD*bayesInfSD;
 		double qmax = 20.;
 		double qrequired = 10.;
 		double currentLoad = 0;
-		double tdepmean = 15;
-		double tdeplearned = tstarttrue;
-		double tdeplearnedsd = 0.05;
-		double returnLoadsd = 2;
+		double tdepTrueMean = 15;
+		double tdepLearnedMean = tstartTrue;
+		double tdepLearnedSD = 0.05;
+		double returnLoadSD = 2;
+		ArrayList<Double> tdepMeans = new ArrayList<Double>();
 		// general simulation parameters
+		String fileHandleOut = "";
 		double priceOffset = 20;
 		int counter = 0;
 		int numberOfRuns = 10;
 		double totalUtility = 0;
 		ArrayList<Double> additionalLoadDataQ = new ArrayList<Double>();
 		ArrayList<Double> additionalLoadDataV = new ArrayList<Double>();
-		double[] loadDataQuestions = {0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9};
+		double[] loadDataQuestions = {0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1};
 		
 		// Price Prediction parameters
 		String fileHandlePrices = "/users/balz/documents/workspace/masterarbeit/data/prices2.csv";
@@ -66,13 +71,14 @@ public class Simulation {
 		double gpVar = 0.05;
 		DoubleMatrix parameters = new DoubleMatrix(priceParameters);
 		int learnStart = 0;
-		int learnEnd = 19;
 		int learnSize = 20;
-		int predictStart = 20;
-		int predictEnd = 39;
+		int predictStart = learnStart + learnSize;
 		int predictSize = 20;
 		int dataPointsPerDay = 20;
-		double stepsize = 1./dataPointsPerDay;
+		double treturnMean = 0;
+		double treturnSD = 0.05;
+		double unpluggedDuration = 30;
+		double stepSize = 1./dataPointsPerDay;
 
 		// MDP Parameters
 		double deltaPrice = 5;
@@ -88,46 +94,60 @@ public class Simulation {
 			// sample the observed values from normal distributions
 			//!!! values need to be consistent
 			// qmin, tstart & tcrit actual values
-			double vmin = sampleFromNormal(vmintrue, sd);
+			double vmin = sampleFromNormal(vminTrue, vminSD);
 			while(vmin < 0){
-				vmin = sampleFromNormal(vmintrue, sd);
+				vmin = sampleFromNormal(vminTrue, vminSD);
 			}
-			double qmin = qmintrue;//sampleFromNormal(qmintrue, sd);
-			double tstart = tstarttrue;//sampleFromNormal(tstarttrue, sd);
-			double tcrit = tcrittrue;//sampleFromNormal(tcrittrue, sd);
-			double mq = sampleFromNormal(mqtrue, sd);
+			double qmin = qminTrue;//sampleFromNormal(qmintrue, sd);
+			double tstart = tstartTrue;//sampleFromNormal(tstarttrue, sd);
+			double tcrit = tcritTrue;//sampleFromNormal(tcrittrue, sd);
+			double mq = sampleFromNormal(mqTrue, mqSD);
 			while(mq < 0 ){
-				mq = sampleFromNormal(mqtrue, sd);
+				mq = sampleFromNormal(mqTrue, mqSD);
 			}
-			double tdep = sampleFromNormal(tdepmean, sd);
+			double tdep = sampleFromNormal(tdepTrueMean, tdepTrueSD);
 			while(!isInRange(tdep, tstart, tcrit-tstart)){
-				tdep = sampleFromNormal(tdepmean, sd);
+				tdep = sampleFromNormal(tdepTrueMean, tdepTrueSD);
 			}
+			tdepMeans.add(tdep);
+			double tdepSum = 0;
+			for(Double d: tdepMeans){
+				tdepSum += d;
+			}
+			tdepLearnedMean = tdepSum/tdepMeans.size();
+			double tdepVarSum = 0;
+			for(Double d: tdepMeans){
+				tdepVarSum += (tdepTrueMean-d)*(tdepTrueMean-d);
+			}
+			tdepLearnedSD = Math.sqrt(tdepVarSum/tdepMeans.size());
 			
 			int rndQuestion = Random.nextInt(loadDataQuestions.length-1);
-			additionalLoadDataQ.add((qmax-qmin)*loadDataQuestions[rndQuestion]);
-			additionalLoadDataV.add(vmin + (qmax-qmin)*loadDataQuestions[rndQuestion]*mq);
+			System.out.println("oldpaara " + mq + " " + vmin);
+
+			additionalLoadDataQ.add(qmin+(qmax-qmin)*loadDataQuestions[rndQuestion]);
+			additionalLoadDataV.add((vmin-qmin*mq)+(qmin + (qmax-qmin)*loadDataQuestions[rndQuestion])*mq);
 			DoubleMatrix xLoad = DoubleMatrix.concatVertically((DoubleMatrix.ones(counter+1)).transpose(),(new DoubleMatrix(additionalLoadDataQ)).transpose());
 			// do Bayesian inference to get mq and vmin
-			BayesInf bi = new BayesInf(xLoad, new DoubleMatrix(additionalLoadDataV), var);
+			BayesInf bi = new BayesInf(xLoad, new DoubleMatrix(additionalLoadDataV), bayesInfVar);
+			Main.printMatrix(xLoad);
+			Main.printMatrix(new DoubleMatrix(additionalLoadDataV));
 			bi.setup();
-			// bad first few runs
 			double mqLearned = bi.getMean().get(1);
-			double vminLearned =  bi.getMean().get(0);
-
+			double vminLearned =  bi.getMean().get(0)+mqLearned*qmin;
+			System.out.println("paara " + mqLearned + " " + vminLearned);
 			//prepare GP
 			double[] xTrain = new double[learnSize];
 			for(int o = 0; o < learnSize; o++){
-				xTrain[o] = o*stepsize+learnStart*stepsize;
+				xTrain[o] = o*stepSize+learnStart*stepSize;
 			}
 			DoubleMatrix xTrainM = new DoubleMatrix(xTrain);
 			double[] xTest = new double[predictSize];
 			for(int o = 0; o < predictSize; o++){
-				xTest[o] = o*stepsize + predictStart*stepsize;
+				xTest[o] = o*stepSize + predictStart*stepSize;
 			}
 			DoubleMatrix xTestM = new DoubleMatrix(xTest);
 			DoubleMatrix priceSamples = FileHandler.csvToMatrix(fileHandlePrices);
-			DoubleMatrix yTrainMPrices = Main.subVector(learnStart, learnSize, priceSamples);
+			DoubleMatrix yTrainMPrices = Main.subVector(learnStart, learnStart+learnSize, priceSamples);
 			GP priceGP = new GP(xTrainM,xTestM,parameters,cf,gpVar);
 //			Main.printMatrix(xTestM);
 //			Main.printMatrix(xTrainM);
@@ -136,7 +156,7 @@ public class Simulation {
 			DoubleMatrix predMeanPrices = priceGP.getPredMean().add(priceOffset);
 			DoubleMatrix predVarPrices = priceGP.getPredVar();
 			// setup mdp
-			EVMDP mdp = new EVMDP(predMeanPrices, predVarPrices, deltaPrice, numSteps, qmax, qrequired, mqLearned, tstart, tcrit, vminLearned,tdeplearned,tdeplearnedsd,currentLoad);
+			EVMDP mdp = new EVMDP(predMeanPrices, predVarPrices, deltaPrice, numSteps, qmax, qrequired, mqLearned, tstart, tcrit, vminLearned,tdepLearnedMean,tdepLearnedSD,currentLoad);
 			mdp.work();
 			// charge the vehicle according to policy and update total utility
 			
@@ -163,16 +183,18 @@ public class Simulation {
 			counter++;
 			if(currentLoad > 0){
 				double tempload = currentLoad - qmin;
-				currentLoad = (int)sampleFromNormal(tempload, returnLoadsd);
+				currentLoad = (int)sampleFromNormal(tempload, returnLoadSD);
 				while(currentLoad < 0){
-					currentLoad = (int)sampleFromNormal(tempload, returnLoadsd);
+					currentLoad = (int)sampleFromNormal(tempload, returnLoadSD);
 				}
 			}
 			System.out.println("returnload: " + currentLoad);
-			// TODO: update tdepmean and sd, update learn and predict interval, introduce treturn
-			learnEnd += learnSize;
-			predictStart = predictEnd;
-			predictEnd += predictSize;
+			// TODO:
+			treturnMean = sampleFromNormal(predictStart + tdep + unpluggedDuration, treturnSD);
+			learnStart = (int)(treturnMean - learnSize);
+			predictStart = (int)treturnMean;
+			System.out.println("tret: " + treturnMean);
+			System.out.println();
 		}
 	}
 	
