@@ -75,5 +75,19 @@ public class FileHandler {
 		return result;
 	}
 	
+	public static void resultsToFile(String content, String destination){
+		try
+		{		
+			FileWriter writer = new FileWriter(destination);
+			writer.append(content);
+		
+			writer.flush();
+			writer.close();
+		}
+		catch(IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
 
 }

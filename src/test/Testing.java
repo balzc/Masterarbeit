@@ -27,7 +27,7 @@ public class Testing {
 	@Test
 	public void doTest(){
 		Simulation s = new Simulation();
-		s.work();
+		s.workTest();
 	}
 	
 //	@Test

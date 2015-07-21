@@ -17,16 +17,19 @@ import gp.GP;
 public class Main {
 
 	public static void main(String[] args) {
-//		testSim();
-		testEVMDP("/users/balz/documents/workspace/masterarbeit/data/prices2.csv", "/users/balz/documents/workspace/masterarbeit/data/out.csv");
+		runSim(args);
+//		testEVMDP("/users/balz/documents/workspace/masterarbeit/data/prices2.csv", "/users/balz/documents/workspace/masterarbeit/data/out.csv");
 //		testBayes();
 	}
 	
+	public static void runSim(String[] args){
+		Simulation s = new Simulation();
+		s.work(args[0], args[1], Double.valueOf(args[2]), Double.valueOf(args[3]), Double.valueOf(args[4]), Double.valueOf(args[5]),Double.valueOf(args[6]), Double.valueOf(args[7]));
+	}
 	public static void testSim(){
 		Simulation s = new Simulation();
-		s.work();
+		s.workTest();
 	}
-	
 	public static void testBayes(){
 		DoubleMatrix x = DoubleMatrix.concatVertically((new DoubleMatrix(new double[] {1,1,1,1,1})).transpose(),(new DoubleMatrix(new double[] {1,2,3,4,5})).transpose());
 		DoubleMatrix y = new DoubleMatrix(new double[] {3,5,7,9,11});
