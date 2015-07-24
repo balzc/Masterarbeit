@@ -53,13 +53,13 @@ public class EVMDP {
 		this.sdScale = deltaPrice;
 		this.qMax = 5;//3
 		this.qRequired = 2;//2
-		this.qSlope = 22;//15
+		this.qSlope = 161;//15
 		this.tStart = 5;//6
 		this.tCrit = 7;//9
-		this.vMin = 46;//14*qRequired
-		this.tMean = 5;//5
+		this.vMin = 321;//14*qRequired
+		this.tMean = 7;//5
 		this.tSD = 0.5;//0.01
-		this.qInitial = 1;
+		this.qInitial = 0;
 		// deltat = (tcrit-tplug)/numsteps
 	}
 

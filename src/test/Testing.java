@@ -27,7 +27,8 @@ public class Testing {
 	@Test
 	public void doTest(){
 		Simulation s = new Simulation();
-		s.workTest();
+
+		s.work("/users/balz/documents/workspace/masterarbeit/data/prices2.csv","/users/balz/documents/workspace/masterarbeit/data/out.csv", 300.,10.,20.,60.,65.,30.);
 	}
 	
 //	@Test
@@ -63,8 +64,8 @@ public class Testing {
 //		CovarianceFunction cf = a1;
 //		int runs = 1;
 //		double cumulativeU = 0;
-//		double currentLoad = 1;
-//		int steps = 96;
+//		double currentLoad = 0;
+//		int steps = 12;
 //		int trainSetSize = 1;
 //		int initialOffset = 0;
 //		double[] loads = new double[runs*steps];
@@ -91,33 +92,33 @@ public class Testing {
 //			
 //		
 //			DoubleMatrix yTrainMPrices = Main.subVector(initialOffset, initialOffset+steps*trainSetSize, priceSamples);
-//			Main.printMatrix(xTrainM);
-//			Main.printMatrix(xTestM);
-//			GP priceGP = new GP(xTrainM,xTestM,P,cf,nl);
-//			priceGP.setup(yTrainMPrices);
-////			DoubleMatrix predMeanPrices = priceSimple;//priceGP.getPredMean().add(20);
-////			DoubleMatrix predVarPrices = priceGP.getPredVar();
-////			EVMDP testmdp = new EVMDP(predMeanPrices,predVarPrices,10,steps);
-////
-////			testmdp.work();
-////			
-////			// heat according to policy and update cumulative utility
-////			int tmp = initialOffset+steps*trainSetSize;
-////			for(int o = 0; o < steps; o++){
-////				System.out.println("O is " +o  + " " + testmdp.priceToState(predMeanPrices.get(o))+ " " +  currentLoad );
-////				int action = testmdp.getOptPolicy()[o][testmdp.priceToState(predMeanPrices.get(o))][testmdp.loadToState(currentLoad)][0];
-////				cumulativeU += testmdp.rewards(currentLoad, action, priceSamples.get(o)+20,o,0);
-////				currentLoad = testmdp.updateLoad(currentLoad, action);
-////
-////				loads[o] = currentLoad;
-////				actions[o] = action;
-////			}
-////			initialOffset += steps;
-////			if(i > 0){
-////				predictedPrices = DoubleMatrix.concatVertically(predictedPrices, predMeanPrices);
-////			} else {
-////				predictedPrices = predMeanPrices;
-////			}
+////			Main.printMatrix(xTrainM);
+////			Main.printMatrix(xTestM);
+////			GP priceGP = new GP(xTrainM,xTestM,P,cf,nl);
+////			priceGP.setup(yTrainMPrices);
+//			DoubleMatrix predMeanPrices = priceSimple;//priceGP.getPredMean().add(20);
+//			DoubleMatrix predVarPrices = priceSimple;//priceGP.getPredVar();
+//			EVMDP testmdp = new EVMDP(predMeanPrices,predVarPrices,10,steps);
+//
+//			testmdp.work();
+//			
+//			// heat according to policy and update cumulative utility
+//			int tmp = initialOffset+steps*trainSetSize;
+//			for(int o = 0; o < steps; o++){
+//				System.out.println("O is " +o  + " " + testmdp.priceToState(predMeanPrices.get(o))+ " " +  currentLoad );
+//				int action = testmdp.getOptPolicy()[o][testmdp.priceToState(predMeanPrices.get(o))][testmdp.loadToState(currentLoad)][0];
+//				cumulativeU += testmdp.rewards(currentLoad, action, priceSimple.get(o),o,0);
+//				currentLoad = testmdp.updateLoad(currentLoad, action);
+//
+//				loads[o] = currentLoad;
+//				actions[o] = action;
+//			}
+//			initialOffset += steps;
+//			if(i > 0){
+//				predictedPrices = DoubleMatrix.concatVertically(predictedPrices, predMeanPrices);
+//			} else {
+//				predictedPrices = predMeanPrices;
+//			}
 //
 //		}
 //		Main.printMatrix(Main.subVector(steps*trainSetSize, steps*trainSetSize+runs*steps, priceSamples).add(20));
@@ -125,7 +126,6 @@ public class Testing {
 //
 //		Main.printMatrix(predictedPrices);
 //		System.out.println();
-//
 //		System.out.print("[");
 //		for(int i = 0; i< loads.length; i++){
 //			System.out.print(loads[i] + "; ");

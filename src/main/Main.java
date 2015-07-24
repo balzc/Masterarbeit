@@ -28,7 +28,7 @@ public class Main {
 	}
 	public static void testSim(){
 		Simulation s = new Simulation();
-		s.workTest();
+		s.work("/users/balz/documents/workspace/masterarbeit/data/prices2.csv","/users/balz/documents/workspace/masterarbeit/data/out.csv", 300.,10.,20.,60.,65.,30.);
 	}
 	public static void testBayes(){
 		DoubleMatrix x = DoubleMatrix.concatVertically((new DoubleMatrix(new double[] {1,1,1,1,1})).transpose(),(new DoubleMatrix(new double[] {1,2,3,4,5})).transpose());
