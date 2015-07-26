@@ -70,7 +70,7 @@ public class EVMDP {
 		this.predCovPrice = predCovPrice;
 		this.deltaPrice = deltaPrice;
 		this.numSteps = numSteps;
-		this.sdScale = deltaPrice;
+		this.sdScale = 6*deltaPrice;
 		this.qMax = qMax;
 		this.qRequired = qRequired;
 		this.qSlope = qSlope;
