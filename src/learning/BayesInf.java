@@ -15,6 +15,7 @@ public class BayesInf {
 	private DoubleMatrix x;
 	private DoubleMatrix y;
 	private DoubleMatrix a;
+	private DoubleMatrix aInv;
 	private DoubleMatrix mean;
 	private DoubleMatrix covar;
 	private DoubleMatrix priorCovar;
@@ -35,7 +36,7 @@ public class BayesInf {
 		DoubleMatrix E = DoubleMatrix.eye(x.rows);
 		DoubleMatrix priorCovarInv = Solve.solvePositive(priorCovar, E);
 		a = x.mmul(x.transpose()).mul(1/var).add(priorCovarInv);
-		DoubleMatrix aInv = Solve.solvePositive(a, E);
+		aInv = Solve.solvePositive(a, E);
 		mean = aInv.mmul(x).mmul(y).mul(1/var);
 
 		covar = aInv;
@@ -43,6 +44,8 @@ public class BayesInf {
 	}
 	public DoubleMatrix getMean(){return mean;}
 	public DoubleMatrix getCovar(){return covar;}
+	public DoubleMatrix getA(){return a;}
+	public DoubleMatrix getAInv(){return aInv;}
 
 	public DoubleMatrix generateSamples(int num, double small){
 
