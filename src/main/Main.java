@@ -1,5 +1,7 @@
 package main;
 
+import java.io.File;
+
 import learning.BayesInf;
 import mdp.EVMDP;
 import mdp.HomeHeatingMDP;
@@ -9,6 +11,16 @@ import org.jblas.DoubleMatrix;
 
 
 
+
+
+
+
+
+
+import cobyla.Cobyla;
+
+import com.sun.corba.se.spi.ior.MakeImmutable;
+
 import simulation.Simulation;
 import util.FileHandler;
 import cov.*;
@@ -17,18 +29,20 @@ import gp.GP;
 public class Main {
 
 	public static void main(String[] args) {
-		runSim(args);
+		optimizeParams();
+//		makePriceFile();
+//		runSim(args);
 //		testEVMDP("/users/balz/documents/workspace/masterarbeit/data/prices2.csv", "/users/balz/documents/workspace/masterarbeit/data/out.csv");
 //		testBayes();
 	}
 	
 	public static void runSim(String[] args){
 		Simulation s = new Simulation();
-		s.work(args[0], args[1], Double.valueOf(args[2]), Double.valueOf(args[3]), Double.valueOf(args[4]), Double.valueOf(args[5]),Double.valueOf(args[6]), Double.valueOf(args[7]));
+		s.work(args[0], args[1], Double.valueOf(args[2]), Double.valueOf(args[3]), Double.valueOf(args[4]), Double.valueOf(args[5]),Double.valueOf(args[6]), Double.valueOf(args[7]),Double.valueOf(args[8]));
 	}
 	public static void testSim(){
 		Simulation s = new Simulation();
-		s.work("/users/balz/documents/workspace/masterarbeit/data/prices2.csv","/users/balz/documents/workspace/masterarbeit/data/out.csv", 300.,10.,20.,60.,65.,30.);
+		s.work("/users/balz/documents/workspace/masterarbeit/data/prices2.csv","/users/balz/documents/workspace/masterarbeit/data/out.csv", 300.,10.,20.,60.,65.,30.,44);
 	}
 	public static void testBayes(){
 		DoubleMatrix x = DoubleMatrix.concatVertically((new DoubleMatrix(new double[] {1,1,1,1,1})).transpose(),(new DoubleMatrix(new double[] {1,2,3,4,5})).transpose());
@@ -338,5 +352,121 @@ public class Main {
 		System.out.println("]");
 		System.out.println(cumulativeU);
 
+	}
+	
+	public static void makePriceFile(){
+		DoubleMatrix result = new DoubleMatrix(0,1);
+		for(int o = 3; o < 6; o++){
+			for(int j = 1; j < 13; j++){
+
+				for(int i = 1; i < 32; i++){
+					File f = new File("/Users/Balz/Downloads/Outlook/prices/prices-201" + o + "-"+j+"-"+i+".csv");
+					if(f.exists() && !f.isDirectory()) { 
+						System.out.println("/Users/Balz/Downloads/Outlook/prices/prices-201" + o + "-"+j+"-"+i+".csv");
+						DoubleMatrix file = FileHandler.csvToMatrix("/Users/Balz/Downloads/Outlook/prices/prices-201" + o + "-"+j+"-"+i+".csv");
+						result = DoubleMatrix.concatVertically(result, file.getColumn(4));
+					}
+				}
+			}
+		}
+		
+		FileHandler.matrixToCsv(result, "/Users/Balz/Downloads/Outlook/allPrices.csv");
+	}
+	
+	public static void optimizeParams(){
+		double[] priceParameters = {1.0368523093853659,5.9031209989290048,.3466674176616187,3.5551018122094575,8.1097474657929007};//{SE1,SE2,P1,OU1,OU2}1.0368523093853659, 5.9031209989290048, .3466674176616187, 3.5551018122094575, 8.1097474657929007, .49489818206999125, 0.049489818206999125};
+		SquaredExponential c1 = new SquaredExponential();
+		Periodic c2 = new Periodic();
+		OrnsteinUhlenbeck m = new OrnsteinUhlenbeck();
+		Multiplicative mult = new Multiplicative(c1, c2);
+		Additive a1 = new Additive(mult, m);
+		CovarianceFunction cf = a1;
+		double gpVar = 0.5;
+		DoubleMatrix parameters = new DoubleMatrix(priceParameters);
+		int numsteps = 48;
+		double stepSize = 1/numsteps;
+		int learnSize = 3*690;
+		int predictSize = 690;
+		double learnStart = 0;
+		double predictStart = learnStart + learnSize;
+		double[] xTrain = new double[learnSize];
+		for(int o = 0; o < learnSize; o++){
+			xTrain[o] = o*stepSize+learnStart*stepSize;
+		}
+		DoubleMatrix xTrainM = new DoubleMatrix(xTrain);
+		double[] xTest = new double[predictSize];
+		for(int o = 0; o < predictSize; o++){
+			xTest[o] = o*stepSize + predictStart*stepSize;
+		}
+		DoubleMatrix xTestM = new DoubleMatrix(xTest);
+		GP  gp = new GP(xTrainM, xTestM, parameters, cf, gpVar);
+		DoubleMatrix priceData = FileHandler.csvToMatrix("/users/balz/documents/workspace/masterarbeit/data/adjustedPrices.csv");
+		gp.setup(subVector(0,learnSize,priceData));
+		printMatrix(gp.getPredMean());
+		printMatrix(subVector(learnSize, learnSize + predictSize, priceData));
+		System.out.println("RMSE at Start: " + computeRMSE(gp.getPredMean(),subVector(learnSize, learnSize + predictSize, priceData)) + " " + gp.calculateNegativeLogLikelihood(parameters));
+
+		double rhobeg = .5;
+		double rhoend = 1.0e-4;
+		int iprint = 0;
+		int maxfun = 100;
+		int numRep = 100;
+		int numVar = cf.getNumParams();
+		int numConstr = 2*numVar;
+		double upperBound = 10;
+		double[] startX = new double[numVar];
+
+		double[][] opt = new double[numVar][numVar];
+		double maxLoglikeli = Double.NEGATIVE_INFINITY;
+		double[][] res = null;
+		double currentRMSE = Double.POSITIVE_INFINITY;
+		DoubleMatrix bestVars = new DoubleMatrix();
+		for (int r = 0; r<numRep; r++){
+			for (int i = 0; i<numVar; i++){
+				startX[i] = Math.random()*upperBound;
+				
+			}
+			if(numVar==8){
+				startX[6] = Math.random();
+			}
+
+			try {
+				res =  Cobyla.FindMinimum(gp, numVar, numConstr, startX, rhobeg, rhoend, iprint, maxfun);
+				if(res[0][0]>maxLoglikeli){
+					maxLoglikeli = res[0][0];
+					opt[0][0] = res[0][0];
+				}
+
+				
+				System.out.println("loglikeli:"+res[0][0]);
+				for(int i = 0; i<res[1].length; i++){
+					System.out.println(res[1][i]);
+				}
+				GP newGP = new GP(xTrainM,xTestM, new DoubleMatrix(res[1]),cf,gpVar);
+				newGP.setup(subVector(0,learnSize,priceData));
+				double rmse = computeRMSE(newGP.getPredMean(),subVector(learnSize, learnSize + predictSize, priceData));
+				if(rmse < currentRMSE){
+					currentRMSE = rmse;
+					bestVars = new DoubleMatrix(res[1]);
+
+				}
+				System.out.println("RMSE: " + currentRMSE + " " + rmse + " " + maxLoglikeli );
+
+			} catch (Exception e) {
+				// TODO: handle exception
+			}
+
+		}
+		printMatrix(bestVars);
+
+		
+	}
+	public static double computeRMSE(DoubleMatrix a, DoubleMatrix b){
+		double RMSE = 0.;
+		DoubleMatrix y = a.sub(b);
+		RMSE = (y.mul(y)).sum();
+
+		RMSE = Math.sqrt((RMSE/(double)y.length));
+		return RMSE;
 	}
 }

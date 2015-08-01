@@ -55,7 +55,9 @@ public class FileHandler {
 			result = new DoubleMatrix(lineCounter, cellCounter);
 			for(int sray = 0; sray < res.size(); sray++){
 				for(int s = 0;s < res.get(sray).length; s++){
-					result.put(sray,s, Double.valueOf(res.get(sray)[s]));
+					if(res.get(sray)[s].matches("-?\\d+(\\.\\d+)?")){
+						result.put(sray,s, Double.valueOf(res.get(sray)[s]));
+					}
 				}
 			}
 

@@ -38,7 +38,7 @@ public class EVMDP {
 
 	private int numSteps;
 
-	private double wattPerUnit = 1;
+	private double kwhPerUnit;
 	
 	double tol = 0.0001;
 
@@ -63,7 +63,7 @@ public class EVMDP {
 		// deltat = (tcrit-tplug)/numsteps
 	}
 
-	public EVMDP(DoubleMatrix predMeanPrice, DoubleMatrix predCovPrice, double deltaPrice,	int numSteps, double qMax, double qRequired, double qSlope, double tStart, double tCrit, double vMin, double tmean, double tsd, double qinitial) {
+	public EVMDP(DoubleMatrix predMeanPrice, DoubleMatrix predCovPrice, double deltaPrice,	int numSteps, double qMax, double qRequired, double qSlope, double tStart, double tCrit, double vMin, double tmean, double tsd, double qinitial, double wattPerUnitInput) {
 
 
 		this.predMeanPrice = predMeanPrice;
@@ -80,6 +80,7 @@ public class EVMDP {
 		this.tMean = tmean;
 		this.tSD = tsd;
 		this.qInitial = qinitial;
+		this.kwhPerUnit = wattPerUnitInput;
 		// deltat = (tcrit-tplug)/numsteps
 	}
 	
@@ -93,13 +94,13 @@ public class EVMDP {
 		computeProbabilityTables();
 		solveMDP();
 //		printQvals();
-//		System.out.println("rewardtest " + rewards(2, 0, 10, 8, 1));
+//		System.out.println("rewardtest " + rewards(999999, 0, 10, 8, 1));
 //		printLoads();
 //
 //		for(int i = 0; i < numSteps-1; i++){
 //			System.out.println(i + ": " + endStateProb[1][0][i] );
 //		}
-//		printPrices();
+		printPrices();
 //		printOptPolicy();
 	}
 	public double computeEndStateProb(int i, int j, int t){
@@ -161,9 +162,10 @@ public class EVMDP {
 
 	// Tested, Works as intended
 	public void computeLoad(){
-		this.loads = new double[(int)(qMax-qInitial+1)];
-		for (int i = 0; i<qMax-qInitial+1; i++){
-			loads[i] = qInitial + i * wattPerUnit;
+		int qRange = (int)(qMax-qInitial/kwhPerUnit+1);
+		this.loads = new double[qRange];
+		for (int i = 0; i<qRange; i++){
+			loads[i] = qInitial + i * kwhPerUnit;
 		}
 	}
 
@@ -171,8 +173,8 @@ public class EVMDP {
 
 	// Tested, Works as intended
 	public void computePrices(){
-		double minPrice = findMinimumPrice();
-		double maxPrice = findMaximumPrice();
+		double minPrice = 0;//findMinimumPrice();
+		double maxPrice = 180;//findMaximumPrice();
 
 		minPrice = Math.floor((minPrice/deltaPrice + 0.5))*deltaPrice;
 
@@ -210,7 +212,7 @@ public class EVMDP {
 
 
 	public double rewards(double q, int action, double price, int t, int endState){
-		double cost = price * action * wattPerUnit;
+		double cost = price * action * kwhPerUnit;
 //		if(value(q+action * wattPerUnit,t+1) >= value(q,t)){
 		if(endState == 1){
 			return value(q,t);
@@ -226,10 +228,10 @@ public class EVMDP {
 	}
 
 	public double value(double qin, int t){
-		double q = Math.min(qin, qMax);
-		double requiredLoad = qRequired*wattPerUnit;
+		double q = Math.min(qin, qMax*kwhPerUnit);
+		double requiredLoad = qRequired*kwhPerUnit;
 		double qflex = Math.max((q-requiredLoad), 0);
-		if(q >= qRequired*wattPerUnit){
+		if(q >= qRequired*kwhPerUnit){
 			if(t < tStart){
 				return (vMin + qSlope*qflex);
 			}
@@ -282,11 +284,11 @@ public class EVMDP {
 
 
 	public double updateLoad(double initialLoad, int action){
-		if(initialLoad + action*wattPerUnit > qMax*wattPerUnit){
-			return qMax*wattPerUnit;
+		if(initialLoad + action*kwhPerUnit > qMax*kwhPerUnit){
+			return qMax*kwhPerUnit;
 		}
 		else{
-			return initialLoad + action*wattPerUnit;
+			return initialLoad + action*kwhPerUnit;
 		}
 
 	}
@@ -454,9 +456,9 @@ public void printQvals(){
 		for(int p = 0; p < prices.length; p++){
 			for(int it = 0; it < loads.length; it++){
 //				for(int e = 0; e < 2; e++){
-//					if(qValues[t][p][it][e] != 0){
+					if(qValues[t][p][it][0] != 0){
 						System.out.print( t + " "+ prices[p] + " " + loads[it] + " " +  qValues[t][p][it][0]+ "; ");
-//					}
+					}
 //				}
 			}
 			System.out.println();

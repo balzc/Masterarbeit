@@ -9,10 +9,12 @@ import org.jblas.Decompose;
 import org.jblas.Solve;
 import org.jblas.DoubleMatrix;
 
+import cobyla.Calcfc;
+
 import com.sun.org.apache.bcel.internal.util.SecuritySupport;
 
 import util.FileHandler;
-public class GP {
+public class GP implements Calcfc{
 	private CovarianceFunction covf;
 	private DoubleMatrix trainIn;
 	private DoubleMatrix trainOut;
@@ -150,6 +152,45 @@ public class GP {
 //        df0.print();
 //		return -loglike;
 //	}
+	
+	   /* The objective and constraints function evaluation method used in COBYLA2 minimization.
+	     * @param n Number of variables.
+	     * @param m Number of constraints.
+	     * @param x Variable values to be employed in function and constraints calculation.
+	     * @param con Calculated function values of the constraints.
+	     * @return Calculated objective function value.
+	     */
+		@Override
+		public double Compute(int n, int m, double[] theta, double[] con) {
+			for(int i = 0; i<n; i++){
+				con[2*i] = theta[i]>0? theta[i]:0.01;
+				con[2*i+1] = Double.MAX_VALUE;
+				/*if(theta.length>3 && i == 6){
+					con[2*i+1] = theta[i]<1? theta[i] : .9;
+				}*/
+			}
+			DoubleMatrix nllparams = new DoubleMatrix(theta);
+			double nll = calculateNegativeLogLikelihood(nllparams);
+//			System.out.println("nll "+ nll);
+//			Main.printMatrix(nllparams);
+			return -nll;
+		}
+	
+	public double calculateNegativeLogLikelihood(DoubleMatrix nllparams){
+
+		DoubleMatrix cova = computeCovMatrix(trainIn, trainIn, nllparams);
+		DoubleMatrix identity = DoubleMatrix.eye(trainIn.rows);
+		DoubleMatrix temp = cova.add(identity.mul(noiselevel));
+		DoubleMatrix el = Decompose.cholesky(temp);
+		DoubleMatrix alphanll = Solve.solve(el.transpose(), Solve.solve(el, trainOut));
+		double loglike = trainOut.transpose().mmul(alphanll).get(0,0)*(-0.5);
+		for(int i = 0; i < el.rows; i++){
+			loglike -= Math.log(el.get(i, i));
+		}
+		loglike -= (numTrain/2)*Math.log(2*Math.PI);
+		return loglike;
+	}   
+	   
 	public double negativeLogLikelihood(DoubleMatrix logtheta,DoubleMatrix x, DoubleMatrix y, DoubleMatrix df0) {
 
         int n = 1;// x.rows;
