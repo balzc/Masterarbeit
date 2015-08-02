@@ -278,11 +278,15 @@ public class Simulation {
 			}
 			
 			SortedMinLoader sml = new SortedMinLoader();
-			sml.setup(predMeanPrices, qmax, currentLoadSML);
+			sml.setup(Main.subVector(0, (int)(tdep + endOfDayOffset+1), predMeanPrices), qmax, currentLoadSML/kwhPerUnit);
 			for(int o = 0; o < tdep + endOfDayOffset; o++){
 				if(mdp.priceToState(realPriceMatrix.get(o)+priceOffset) < 0){
 					System.out.println("Bad Price" + realPriceMatrix.get(o)+priceOffset);
 				}
+				if(mdp.loadToState(currentLoadMDP) < 0){
+					System.out.println("Bad Load" + currentLoadMDP);
+				}
+				
 				int actionMDP = mdp.getOptPolicy()[o][mdp.priceToState(realPriceMatrix.get(o)+priceOffset)][mdp.loadToState(currentLoadMDP)][0];
 				// MDP: cost summation, save for every day			
 				totalUtilityMDP += mdp.rewards(currentLoadMDP, actionMDP, realPriceMatrix.get(o)+priceOffset,o,0);
@@ -290,28 +294,49 @@ public class Simulation {
 				loadsMDP.add(currentLoadMDP);
 				actionsMDP.add(actionMDP);
 				// LPL
-				int actionLPL = LPL.actionQuery(currentLoadLPL, realPriceMatrix.get(o)+priceOffset);
+				
+				int actionLPL = LPL.actionQuery(currentLoadLPL/kwhPerUnit, realPriceMatrix.get(o)+priceOffset);
+
 				totalUtilityLPL += mdp.rewards(currentLoadLPL, actionLPL, realPriceMatrix.get(o)+priceOffset,o,0);
 				currentLoadLPL = mdp.updateLoad(currentLoadLPL, actionLPL);
+				actionsLPL.add(actionLPL);
+				loadsLPL.add(currentLoadLPL);
 				// PAFL
-				int actionPAFL = PAFL.actionQuery(currentLoadPAFL);
-				totalUtilityLPL += mdp.rewards(currentLoadPAFL, actionPAFL, realPriceMatrix.get(o)+priceOffset,o,0);
-				currentLoadLPL = mdp.updateLoad(currentLoadPAFL, actionPAFL);
+				int actionPAFL = PAFL.actionQuery(currentLoadPAFL/kwhPerUnit);
+				totalUtilityPAFL += mdp.rewards(currentLoadPAFL, actionPAFL, realPriceMatrix.get(o)+priceOffset,o,0);
+				currentLoadPAFL = mdp.updateLoad(currentLoadPAFL, actionPAFL);
+				actionsPAFL.add(actionPAFL);
+				loadsPAFL.add(currentLoadPAFL);
 				// SML
 				int actionSML = sml.policy[o];
-				totalUtilityLPL += mdp.rewards(currentLoadSML, actionSML, realPriceMatrix.get(o)+priceOffset,o,0);
-				currentLoadLPL = mdp.updateLoad(currentLoadSML, actionSML);
+				totalUtilitySML += mdp.rewards(currentLoadSML, actionSML, realPriceMatrix.get(o)+priceOffset,o,0);
+				currentLoadSML = mdp.updateLoad(currentLoadSML, actionSML);
+				actionsSML.add(actionSML);
+				loadsSML.add(currentLoadSML);
 				//record prices
 				realPrices.add(realPriceMatrix.get(o));
 //				totalUtilitiesMDP.add(-1.);
 				predictedPrices.add(predMeanPrices.get(o));
 			}
-			System.out.println("endload: " + currentLoadMDP);
-			System.out.println("costs: " + totalUtilityMDP);
+			System.out.println("endload MDP: " + currentLoadMDP);
+			System.out.println("endload LPL: " + currentLoadLPL);
+			System.out.println("endload PAFL: " + currentLoadPAFL);
+			System.out.println("endload SML: " + currentLoadSML);
+
+			System.out.println("costs MDP: " + totalUtilityMDP);
+			System.out.println("costs LPL: " + totalUtilityLPL);
+			System.out.println("costs PAFL: " + totalUtilityPAFL);
+			System.out.println("costs SML: " + totalUtilitySML);
 
 			totalUtilityMDP = totalUtilityMDP + mdp.rewards(currentLoadMDP, 0, 0, (int)tdep, 1);
+			totalUtilityLPL = totalUtilityLPL + mdp.rewards(currentLoadLPL, 0, 0, (int)tdep, 1);
+			totalUtilityPAFL = totalUtilityPAFL + mdp.rewards(currentLoadPAFL, 0, 0, (int)tdep, 1);
+			totalUtilitySML = totalUtilitySML + mdp.rewards(currentLoadSML, 0, 0, (int)tdep, 1);
 
-			System.out.println("total utility: " + totalUtilityMDP);
+			System.out.println("total utility MDP: " + totalUtilityMDP);
+			System.out.println("total utility LPL: " + totalUtilityLPL);
+			System.out.println("total utility PAFL: " + totalUtilityPAFL);
+			System.out.println("total utility SML: " + totalUtilitySML);
 
 			counter++;
 			if(currentLoadMDP > 0){
@@ -321,13 +346,41 @@ public class Simulation {
 					currentLoadMDP = (int)sampleFromNormal(tempload, returnLoadSD);
 				}
 			}
+			currentLoadLPL = currentLoadMDP;
+			currentLoadPAFL = currentLoadMDP;
+			currentLoadSML = currentLoadMDP;
+//			if(currentLoadLPL > 0){
+//				double tempload = currentLoadLPL - qmin*kwhPerUnit;
+//				currentLoadLPL = (int)sampleFromNormal(tempload, returnLoadSD);
+//				while(currentLoadLPL < 0){
+//					currentLoadLPL = (int)sampleFromNormal(tempload, returnLoadSD);
+//				}
+//			}
+//			if(currentLoadPAFL > 0){
+//				double tempload = currentLoadPAFL - qmin*kwhPerUnit;
+//				currentLoadPAFL = (int)sampleFromNormal(tempload, returnLoadSD);
+//				while(currentLoadPAFL < 0){
+//					currentLoadPAFL = (int)sampleFromNormal(tempload, returnLoadSD);
+//				}
+//			}
+//			if(currentLoadSML > 0){
+//				double tempload = currentLoadSML - qmin*kwhPerUnit;
+//				currentLoadSML = (int)sampleFromNormal(tempload, returnLoadSD);
+//				while(currentLoadSML < 0){
+//					currentLoadSML = (int)sampleFromNormal(tempload, returnLoadSD);
+//				}
+//			}
 //			loads.add(currentLoad);
 //			actions.add(-1);
 //			realPrices.add(-1.);
 //			totalUtilities.add(totalUtility);
 //			predictedPrices.add(-1.);
 
-			System.out.println("returnload: " + currentLoadMDP);
+			System.out.println("returnload MDP: " + currentLoadMDP);
+			System.out.println("returnload LPL: " + currentLoadLPL);
+			System.out.println("returnload PAFL: " + currentLoadPAFL);
+			System.out.println("returnload SML: " + currentLoadSML);
+
 			// TODO:
 			System.out.println("predicstart: " + predictStart);
 
@@ -339,12 +392,19 @@ public class Simulation {
 			System.out.println("endofday offset: " + endOfDayOffset);
 			System.out.println();
 			totalUtilityMDP = 0;
+			totalUtilityLPL = 0;
+			totalUtilityPAFL = 0;
+			totalUtilitySML = 0;
 
 
 
 		}
 		//		printOut = DoubleMatrix.concatHorizontally(DoubleMatrix.concatHorizontally(DoubleMatrix.concatHorizontally(new DoubleMatrix(loads), new DoubleMatrix(realPrices)),new DoubleMatrix(predictedPrices)),new DoubleMatrix(totalUtilities));
 		Main.printMatrix(new DoubleMatrix(loadsMDP));
+		Main.printMatrix(new DoubleMatrix(loadsLPL));
+		Main.printMatrix(new DoubleMatrix(loadsPAFL));
+		Main.printMatrix(new DoubleMatrix(loadsSML));
+
 		Main.printMatrix(new DoubleMatrix(predictedPrices));
 		Main.printMatrix(new DoubleMatrix(realPrices));
 

@@ -9,9 +9,10 @@ public class OrnsteinUhlenbeck extends CovarianceFunction{
 		numParams = 2;
 	}
 	public int getNumParams(){return numParams;}
+	
 	public double computeCovariance(double x, double xstar, DoubleMatrix parameters){
 		this.parameters = parameters;
-		double d = Math.sqrt((x-xstar)*(x-xstar));
+		double d = Math.abs(x-xstar);
 		double f = parameters.get(0)*parameters.get(0)*Math.exp(-d/(parameters.get(1)*parameters.get(1)));
 		return f;
 
@@ -20,7 +21,7 @@ public class OrnsteinUhlenbeck extends CovarianceFunction{
 		this.parameters = parameters;
 //		System.out.println("OU: " + parameters.get(0) + " " + parameters.get(1) );
 
-		double d = Math.sqrt((x.get(0)-xstar.get(0))*(x.get(0)-xstar.get(0)));
+		double d = Math.abs(x.get(0)-xstar.get(0));
 		double f = parameters.get(0)*parameters.get(0)*Math.exp(-d/(parameters.get(1)*parameters.get(1)));
 		return f;
 	}

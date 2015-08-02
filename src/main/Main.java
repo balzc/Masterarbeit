@@ -372,21 +372,31 @@ public class Main {
 		
 		FileHandler.matrixToCsv(result, "/Users/Balz/Downloads/Outlook/allPrices.csv");
 	}
-	
+
+
 	public static void optimizeParams(){
-		double[] priceParameters = {1.0368523093853659,5.9031209989290048,.3466674176616187,3.5551018122094575,8.1097474657929007};//{SE1,SE2,P1,OU1,OU2}1.0368523093853659, 5.9031209989290048, .3466674176616187, 3.5551018122094575, 8.1097474657929007, .49489818206999125, 0.049489818206999125};
+	/*	1.4016926456748566
+		5.939885027240675
+		10.258330715290294
+		7.814278005934424
+		11.71818393993244
+		0.8228888605895213
+		0.8228888605895213 */
+		double[] priceParameters = {1.0368523093853659,5.9031209989290048,1.0368523093853659,.3466674176616187,3.5551018122094575,8.1097474657929007};//{SE1,SE2,P1,OU1,OU2}1.0368523093853659, 5.9031209989290048, .3466674176616187, 3.5551018122094575, 8.1097474657929007, .49489818206999125, 0.049489818206999125};
 		SquaredExponential c1 = new SquaredExponential();
 		Periodic c2 = new Periodic();
 		OrnsteinUhlenbeck m = new OrnsteinUhlenbeck();
 		Multiplicative mult = new Multiplicative(c1, c2);
 		Additive a1 = new Additive(mult, m);
 		CovarianceFunction cf = a1;
-		double gpVar = 0.5;
+		double gpVar = 0;
 		DoubleMatrix parameters = new DoubleMatrix(priceParameters);
-		int numsteps = 48;
-		double stepSize = 1/numsteps;
-		int learnSize = 3*690;
-		int predictSize = 690;
+		int numsteps = 480;
+		double stepSize = 1./numsteps;
+		System.out.println(stepSize);
+
+		int learnSize = 2*numsteps;
+		int predictSize = numsteps;
 		double learnStart = 0;
 		double predictStart = learnStart + learnSize;
 		double[] xTrain = new double[learnSize];
@@ -398,12 +408,18 @@ public class Main {
 		for(int o = 0; o < predictSize; o++){
 			xTest[o] = o*stepSize + predictStart*stepSize;
 		}
+		
+//		printMatrix(xTrainM);
 		DoubleMatrix xTestM = new DoubleMatrix(xTest);
+//		printMatrix(xTestM);
+
 		GP  gp = new GP(xTrainM, xTestM, parameters, cf, gpVar);
-		DoubleMatrix priceData = FileHandler.csvToMatrix("/users/balz/documents/workspace/masterarbeit/data/adjustedPrices.csv");
+		DoubleMatrix priceData = FileHandler.csvToMatrix("/users/balz/documents/workspace/masterarbeit/data/pricesUK.csv");
 		gp.setup(subVector(0,learnSize,priceData));
-		printMatrix(gp.getPredMean());
-		printMatrix(subVector(learnSize, learnSize + predictSize, priceData));
+
+//		printMatrix(gp.getTrainCov());
+//		printMatrix(gp.getPredMean());
+//		printMatrix(subVector(learnSize, learnSize + predictSize, priceData));
 		System.out.println("RMSE at Start: " + computeRMSE(gp.getPredMean(),subVector(learnSize, learnSize + predictSize, priceData)) + " " + gp.calculateNegativeLogLikelihood(parameters));
 
 		double rhobeg = .5;
@@ -411,7 +427,7 @@ public class Main {
 		int iprint = 0;
 		int maxfun = 100;
 		int numRep = 100;
-		int numVar = cf.getNumParams();
+		int numVar = 6;//cf.getNumParams();
 		int numConstr = 2*numVar;
 		double upperBound = 10;
 		double[] startX = new double[numVar];
@@ -450,7 +466,7 @@ public class Main {
 					bestVars = new DoubleMatrix(res[1]);
 
 				}
-				System.out.println("RMSE: " + currentRMSE + " " + rmse + " " + maxLoglikeli );
+				System.out.println(r + " RMSE: " + currentRMSE + " " + rmse + " " + maxLoglikeli );
 
 			} catch (Exception e) {
 				// TODO: handle exception

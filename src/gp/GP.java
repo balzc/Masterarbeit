@@ -90,14 +90,16 @@ public class GP implements Calcfc{
 	public DoubleMatrix computeMean(){
 		DoubleMatrix cova = computeCovMatrix(trainIn, testIn, parameters);
 		DoubleMatrix identity = DoubleMatrix.eye(trainCov.rows);
-		DoubleMatrix temp = trainCov.add(identity.mul(noiselevel));
-		System.out.println("Temp1");
-
-		Main.printMatrix(temp);
+		DoubleMatrix temp = trainCov;//.add(identity.mul(noiselevel));
+//		System.out.println("Temp1");
+//
+//		Main.printMatrix(temp);
 		DoubleMatrix covInv = Solve.solvePositive(temp, identity);
 		System.out.println("Alpha1");
 
-		Main.printMatrix(covInv.mmul(trainOut));
+		Main.printMatrix(covInv);
+		Main.printMatrix(cova);
+		Main.printMatrix(trainOut);
 		DoubleMatrix mean = cova.transpose().mmul(covInv).mmul(trainOut);//cova.transpose().mmul(alpha);
 		return mean;
 	}
@@ -109,6 +111,7 @@ public class GP implements Calcfc{
 //		System.out.println("Temp2");
 //
 //		Main.printMatrix(temp);
+//		Main.printMatrix(identity.mul(noiselevel));
 		DoubleMatrix l = Decompose.cholesky(temp).transpose();
 //		System.out.println("Y");
 //		Main.printMatrix(trainOut);

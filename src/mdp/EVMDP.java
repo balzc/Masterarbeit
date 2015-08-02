@@ -94,13 +94,13 @@ public class EVMDP {
 		computeProbabilityTables();
 		solveMDP();
 //		printQvals();
-//		System.out.println("rewardtest " + rewards(999999, 0, 10, 8, 1));
+//		System.out.println("rewardtest " + rewards(879, 1, 100, 8, 0));
 //		printLoads();
 //
 //		for(int i = 0; i < numSteps-1; i++){
 //			System.out.println(i + ": " + endStateProb[1][0][i] );
 //		}
-		printPrices();
+//		printPrices();
 //		printOptPolicy();
 	}
 	public double computeEndStateProb(int i, int j, int t){
@@ -163,7 +163,12 @@ public class EVMDP {
 	// Tested, Works as intended
 	public void computeLoad(){
 		int qRange = (int)(qMax-qInitial/kwhPerUnit+1);
-		this.loads = new double[qRange];
+		if(qInitial + qRange-1 * kwhPerUnit < qMax * kwhPerUnit){
+			this.loads = new double[qRange+1];
+			loads[qRange] = qMax*kwhPerUnit;
+		} else {
+			this.loads = new double[qRange];
+		}
 		for (int i = 0; i<qRange; i++){
 			loads[i] = qInitial + i * kwhPerUnit;
 		}
@@ -212,7 +217,8 @@ public class EVMDP {
 
 
 	public double rewards(double q, int action, double price, int t, int endState){
-		double cost = price * action * kwhPerUnit;
+		double loadToMax = Math.min((qMax*kwhPerUnit-q),kwhPerUnit);
+		double cost = price * action * loadToMax;
 //		if(value(q+action * wattPerUnit,t+1) >= value(q,t)){
 		if(endState == 1){
 			return value(q,t);

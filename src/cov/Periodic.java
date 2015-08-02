@@ -6,7 +6,7 @@ public class Periodic extends CovarianceFunction{
 	public DoubleMatrix parameters;
 	public int numParams;
 	public Periodic(){
-		numParams = 1;
+		numParams = 2;
 
 	}
 	public int getNumParams(){return numParams;}
@@ -16,19 +16,19 @@ public class Periodic extends CovarianceFunction{
 
 		double d = Math.abs(x-xstar);
 		d = Math.sin(Math.PI*d);
-		return Math.exp(-2*d*d/parameters.get(0)*parameters.get(0));
+		return parameters.get(0)*parameters.get(0)*Math.exp(-2*d*d/(parameters.get(1)*parameters.get(1)));
 
 	}
 	public double computeCovariance(DoubleMatrix x, DoubleMatrix xstar, DoubleMatrix parameters){
 		this.parameters = parameters;
-//		System.out.println("Per: " + parameters.get(0) );
+//		System.out.println("Per: " + parameters.get(0) + " " + parameters.get(1) );
 
 		double d = Math.abs(x.get(0)-xstar.get(0));
 
 		double sin = Math.sin(Math.PI*d);
 
 
-		return Math.exp(-2*sin*sin/parameters.get(0)*parameters.get(0));
+		return parameters.get(0)*parameters.get(0)*Math.exp(-2*sin*sin/(parameters.get(1)*parameters.get(1)));
 	}
 
 	public DoubleMatrix computeSingleValue(DoubleMatrix parameters, DoubleMatrix X){
