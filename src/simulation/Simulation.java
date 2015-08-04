@@ -47,8 +47,8 @@ public class Simulation {
 		double tcritTrue = tcritInput;
 		double mqTrue = mqInput;
 		double bayesInfSD = 5.;
-		double vminSD = 50.;// mqsd *qmin
-		double mqSD = 50.;//5
+		double vminSD = 1.;// mqsd *qmin
+		double mqSD = 1.;//5
 		double tdepTrueSD = 0.05;//15 min
 		double bayesInfVar = bayesInfSD*bayesInfSD;
 		
@@ -91,7 +91,7 @@ public class Simulation {
 		String fileHandlePrices = fhprices;//"/users/balz/documents/workspace/masterarbeit/data/prices2.csv";
 		DoubleMatrix priceSamples = FileHandler.csvToMatrix(fileHandlePrices);
 
-		double[] priceParameters = {1.0368523093853659,5.9031209989290048,.3466674176616187,3.5551018122094575,8.1097474657929007};
+		double[] priceParameters = {1.0368523093853659,5.9031209989290048,1.0368523093853659,.3466674176616187,3.5551018122094575,8.1097474657929007};
 		SquaredExponential c1 = new SquaredExponential();
 		Periodic c2 = new Periodic();
 		OrnsteinUhlenbeck ou = new OrnsteinUhlenbeck();
@@ -122,6 +122,11 @@ public class Simulation {
 		ArrayList<Double> loadsPAFL = new ArrayList<Double>();
 		ArrayList<Double> loadsSML = new ArrayList<Double>();
 
+		ArrayList<Double> loadsDailyMDP = new ArrayList<Double>();
+		ArrayList<Double> loadsDailyLPL = new ArrayList<Double>();
+		ArrayList<Double> loadsDailyPAFL = new ArrayList<Double>();
+		ArrayList<Double> loadsDailySML = new ArrayList<Double>();
+		
 		ArrayList<Double> realPrices = new ArrayList<Double>();
 		ArrayList<Double> predictedPrices = new ArrayList<Double>();
 
@@ -130,6 +135,16 @@ public class Simulation {
 		ArrayList<Integer> actionsPAFL = new ArrayList<Integer>();
 		ArrayList<Integer> actionsSML = new ArrayList<Integer>();
 
+		ArrayList<Double> costsDailyMDP = new ArrayList<Double>();
+		ArrayList<Double> costsDailyLPL = new ArrayList<Double>();
+		ArrayList<Double> costsDailyPAFL = new ArrayList<Double>();
+		ArrayList<Double> costsDailySML = new ArrayList<Double>();
+		
+		ArrayList<Double> costsPerDeltaTMDP = new ArrayList<Double>();
+		ArrayList<Double> costsPerDeltaTLPL = new ArrayList<Double>();
+		ArrayList<Double> costsPerDeltaTPAFL = new ArrayList<Double>();
+		ArrayList<Double> costsPerDeltaTSML = new ArrayList<Double>();
+		
 		ArrayList<Double> totalUtilitiesMDP = new ArrayList<Double>();
 		ArrayList<Double> totalUtilitiesLPL = new ArrayList<Double>();
 		ArrayList<Double> totalUtilitiesPAFL = new ArrayList<Double>();
@@ -254,9 +269,6 @@ public class Simulation {
 				double[][] covarianceMatrix = new double[2][2];
 				covarianceMatrix[0] = new double[] {bi.getAInv().get(0,0),bi.getAInv().get(0,1)};
 				covarianceMatrix[1] = new double[] {bi.getAInv().get(1,0),bi.getAInv().get(1,1)};
-				Main.printMatrix(new DoubleMatrix(covarianceMatrix));
-				Main.printMatrix(bi.getAInv());
-				Main.printMatrix(bi.getMean());
 				MultivariateNormalDistribution mvnd = new MultivariateNormalDistribution(new double[] {bi.getMean().get(0),bi.getMean().get(1)},covarianceMatrix);
 				for(int i = 0; i < numberOfSamplesForStoppingCriterion; i++){
 					double[] sample = mvnd.sample();
@@ -290,32 +302,33 @@ public class Simulation {
 				int actionMDP = mdp.getOptPolicy()[o][mdp.priceToState(realPriceMatrix.get(o)+priceOffset)][mdp.loadToState(currentLoadMDP)][0];
 				// MDP: cost summation, save for every day			
 				totalUtilityMDP += mdp.rewards(currentLoadMDP, actionMDP, realPriceMatrix.get(o)+priceOffset,o,0);
+				costsPerDeltaTMDP.add(mdp.rewards(currentLoadMDP, actionMDP, realPriceMatrix.get(o)+priceOffset,o,0));
 				currentLoadMDP = mdp.updateLoad(currentLoadMDP, actionMDP);
 				loadsMDP.add(currentLoadMDP);
 				actionsMDP.add(actionMDP);
-				// LPL
-				
+				// Low price loader
 				int actionLPL = LPL.actionQuery(currentLoadLPL/kwhPerUnit, realPriceMatrix.get(o)+priceOffset);
-
 				totalUtilityLPL += mdp.rewards(currentLoadLPL, actionLPL, realPriceMatrix.get(o)+priceOffset,o,0);
+				costsPerDeltaTLPL.add(mdp.rewards(currentLoadLPL, actionLPL, realPriceMatrix.get(o)+priceOffset,o,0));
 				currentLoadLPL = mdp.updateLoad(currentLoadLPL, actionLPL);
 				actionsLPL.add(actionLPL);
 				loadsLPL.add(currentLoadLPL);
-				// PAFL
+				// plug and forget loader
 				int actionPAFL = PAFL.actionQuery(currentLoadPAFL/kwhPerUnit);
 				totalUtilityPAFL += mdp.rewards(currentLoadPAFL, actionPAFL, realPriceMatrix.get(o)+priceOffset,o,0);
+				costsPerDeltaTPAFL.add(mdp.rewards(currentLoadPAFL, actionPAFL, realPriceMatrix.get(o)+priceOffset,o,0));
 				currentLoadPAFL = mdp.updateLoad(currentLoadPAFL, actionPAFL);
 				actionsPAFL.add(actionPAFL);
 				loadsPAFL.add(currentLoadPAFL);
-				// SML
+				// SortedMinLoader
 				int actionSML = sml.policy[o];
 				totalUtilitySML += mdp.rewards(currentLoadSML, actionSML, realPriceMatrix.get(o)+priceOffset,o,0);
+				costsPerDeltaTSML.add(mdp.rewards(currentLoadSML, actionSML, realPriceMatrix.get(o)+priceOffset,o,0));
 				currentLoadSML = mdp.updateLoad(currentLoadSML, actionSML);
 				actionsSML.add(actionSML);
 				loadsSML.add(currentLoadSML);
 				//record prices
 				realPrices.add(realPriceMatrix.get(o));
-//				totalUtilitiesMDP.add(-1.);
 				predictedPrices.add(predMeanPrices.get(o));
 			}
 			System.out.println("endload MDP: " + currentLoadMDP);
@@ -327,7 +340,15 @@ public class Simulation {
 			System.out.println("costs LPL: " + totalUtilityLPL);
 			System.out.println("costs PAFL: " + totalUtilityPAFL);
 			System.out.println("costs SML: " + totalUtilitySML);
-
+			
+			loadsDailyLPL.add(currentLoadLPL);
+			loadsDailyMDP.add(currentLoadMDP);
+			loadsDailyPAFL.add(currentLoadPAFL);
+			loadsDailySML.add(currentLoadSML);
+			costsDailyLPL.add(totalUtilityLPL);
+			costsDailyMDP.add(totalUtilityMDP);
+			costsDailyPAFL.add(totalUtilityPAFL);
+			costsDailySML.add(totalUtilitySML);
 			totalUtilityMDP = totalUtilityMDP + mdp.rewards(currentLoadMDP, 0, 0, (int)tdep, 1);
 			totalUtilityLPL = totalUtilityLPL + mdp.rewards(currentLoadLPL, 0, 0, (int)tdep, 1);
 			totalUtilityPAFL = totalUtilityPAFL + mdp.rewards(currentLoadPAFL, 0, 0, (int)tdep, 1);
@@ -339,42 +360,19 @@ public class Simulation {
 			System.out.println("total utility SML: " + totalUtilitySML);
 
 			counter++;
+			double usedLoad = currentLoadMDP;
 			if(currentLoadMDP > 0){
 				double tempload = currentLoadMDP - qmin*kwhPerUnit;
 				currentLoadMDP = (int)sampleFromNormal(tempload, returnLoadSD);
 				while(currentLoadMDP < 0){
 					currentLoadMDP = (int)sampleFromNormal(tempload, returnLoadSD);
 				}
+				usedLoad = usedLoad - currentLoadMDP;
 			}
-			currentLoadLPL = currentLoadMDP;
-			currentLoadPAFL = currentLoadMDP;
-			currentLoadSML = currentLoadMDP;
-//			if(currentLoadLPL > 0){
-//				double tempload = currentLoadLPL - qmin*kwhPerUnit;
-//				currentLoadLPL = (int)sampleFromNormal(tempload, returnLoadSD);
-//				while(currentLoadLPL < 0){
-//					currentLoadLPL = (int)sampleFromNormal(tempload, returnLoadSD);
-//				}
-//			}
-//			if(currentLoadPAFL > 0){
-//				double tempload = currentLoadPAFL - qmin*kwhPerUnit;
-//				currentLoadPAFL = (int)sampleFromNormal(tempload, returnLoadSD);
-//				while(currentLoadPAFL < 0){
-//					currentLoadPAFL = (int)sampleFromNormal(tempload, returnLoadSD);
-//				}
-//			}
-//			if(currentLoadSML > 0){
-//				double tempload = currentLoadSML - qmin*kwhPerUnit;
-//				currentLoadSML = (int)sampleFromNormal(tempload, returnLoadSD);
-//				while(currentLoadSML < 0){
-//					currentLoadSML = (int)sampleFromNormal(tempload, returnLoadSD);
-//				}
-//			}
-//			loads.add(currentLoad);
-//			actions.add(-1);
-//			realPrices.add(-1.);
-//			totalUtilities.add(totalUtility);
-//			predictedPrices.add(-1.);
+			currentLoadLPL = Math.max(0,currentLoadLPL - usedLoad);
+			currentLoadPAFL = Math.max(0,currentLoadPAFL - usedLoad);
+			currentLoadSML = Math.max(0,currentLoadSML - usedLoad);
+
 
 			System.out.println("returnload MDP: " + currentLoadMDP);
 			System.out.println("returnload LPL: " + currentLoadLPL);
@@ -391,6 +389,11 @@ public class Simulation {
 			System.out.println("tret: " + treturnMean);
 			System.out.println("endofday offset: " + endOfDayOffset);
 			System.out.println();
+			totalUtilitiesLPL.add(totalUtilityLPL);
+			totalUtilitiesMDP.add(totalUtilityMDP);
+			totalUtilitiesSML.add(totalUtilitySML);
+			totalUtilitiesPAFL.add(totalUtilityPAFL);
+
 			totalUtilityMDP = 0;
 			totalUtilityLPL = 0;
 			totalUtilityPAFL = 0;
@@ -407,7 +410,19 @@ public class Simulation {
 
 		Main.printMatrix(new DoubleMatrix(predictedPrices));
 		Main.printMatrix(new DoubleMatrix(realPrices));
-
+		DoubleMatrix dailyReport = DoubleMatrix.concatHorizontally(new DoubleMatrix(totalUtilitiesMDP), new DoubleMatrix(totalUtilitiesLPL));
+		dailyReport = DoubleMatrix.concatHorizontally(dailyReport, new DoubleMatrix(totalUtilitiesPAFL));
+		dailyReport = DoubleMatrix.concatHorizontally(dailyReport, new DoubleMatrix(totalUtilitiesSML));
+		dailyReport = DoubleMatrix.concatHorizontally(dailyReport, new DoubleMatrix(costsDailyMDP));
+		dailyReport = DoubleMatrix.concatHorizontally(dailyReport, new DoubleMatrix(costsDailyLPL));
+		dailyReport = DoubleMatrix.concatHorizontally(dailyReport, new DoubleMatrix(costsDailyPAFL));
+		dailyReport = DoubleMatrix.concatHorizontally(dailyReport, new DoubleMatrix(costsDailySML));
+		dailyReport = DoubleMatrix.concatHorizontally(dailyReport, new DoubleMatrix(loadsDailyMDP));
+		dailyReport = DoubleMatrix.concatHorizontally(dailyReport, new DoubleMatrix(loadsDailyLPL));
+		dailyReport = DoubleMatrix.concatHorizontally(dailyReport, new DoubleMatrix(loadsDailyPAFL));
+		dailyReport = DoubleMatrix.concatHorizontally(dailyReport, new DoubleMatrix(loadsDailySML));
+		String fileName = "vmin" + (int)vminTrue + "mq" + (int)mqTrue + "kwh" + (int)kwhPerUnit + "tstart" + (int)tstartTrue + "tcrit" + (int)tcritTrue + "qmax" +(int)qmax + "qmin" + (int)qminTrue ;
+		FileHandler.safeDailyReport(dailyReport, fileHandleOut  + fileName + "daily.csv");
 		//		FileHandler.matrixToCsv(printOut, fileHandleOut);
 
 	}

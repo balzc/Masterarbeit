@@ -439,7 +439,7 @@ public class Main {
 		DoubleMatrix bestVars = new DoubleMatrix();
 		for (int r = 0; r<numRep; r++){
 			for (int i = 0; i<numVar; i++){
-				startX[i] = Math.random()*upperBound;
+				startX[i] = priceParameters[i];//Math.random()*upperBound;
 				
 			}
 			if(numVar==8){

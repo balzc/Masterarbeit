@@ -28,7 +28,7 @@ public class Testing {
 	public void doTest(){
 		Simulation s = new Simulation();
 
-		s.work("/users/balz/documents/workspace/masterarbeit/data/adjustedPrices.csv","/users/balz/documents/workspace/masterarbeit/data/out.csv", 5000.,10.,20.,32.,34.,500.,44);
+		s.work("/users/balz/documents/workspace/masterarbeit/data/adjustedPrices.csv","/users/balz/documents/workspace/masterarbeit/data/", 5000.,10.,20.,32.,34.,500.,44);
 	}
 	
 //	@Test
