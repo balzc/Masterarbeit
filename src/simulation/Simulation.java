@@ -27,6 +27,9 @@ import cov.SquaredExponential;
 
 public class Simulation {
 
+	/*
+	 * @param blablabla
+	 */
 	public void work(String fhprices, String fhout, double vminvarInput, double qminInput, double qmaxInput, double tstartInput, double tcritInput, double mqInput, double kwhPerUnitInput){
 		/* create User
 		 * get User feedback
@@ -40,13 +43,20 @@ public class Simulation {
 		long time = (long)0.;
 
 		// user intrinsic parameters
-		double vminTrue = vminvarInput;
-		double qminTrue = qminInput;
-		double qmax = qmaxInput;
+		// input is the kwh of a car battery, qmax is then the number of timesteps required to fill that battery with kwhPerUnitInput
+		double qmax = qmaxInput/kwhPerUnitInput;
+		// input is a percentage number, qminTrue is then the number of timesteps required to fill the battery to that percentage
+		double qminTrue = qminInput*qmaxInput/kwhPerUnitInput;
+		// input is a price per kwh, vmintrue is then the number of units required for qmin times the price per kwh times kwh per unit
+		double vminTrue = vminvarInput*qminTrue*kwhPerUnitInput;
+		// input relative to time discretization
 		double tstartTrue = tstartInput;
 		double tcritTrue = tcritInput;
-		double mqTrue = mqInput;
-		double bayesInfSD = 5.;
+		// input is price per kwh, mqTrue is then price per loadunit
+		double mqTrue = mqInput*kwhPerUnitInput;
+		
+		System.out.println("qmax " + qmax + "  qmin " + qminTrue + " vmin " + vminTrue + " mq " + mqTrue);
+		double bayesInfSD = 0.5;
 		double vminSD = 1.;// mqsd *qmin
 		double mqSD = 1.;//5
 		double tdepTrueSD = 0.05;//15 min
@@ -67,7 +77,7 @@ public class Simulation {
 		double currentLoadSML = 0;
 
 		// Stopping criterion parameters
-		int numberOfSamplesForStoppingCriterion = 0;
+		int numberOfSamplesForStoppingCriterion = 10;
 		double stoppingCriterionThreshold = 0.5;
 
 		// general simulation parameters
@@ -101,7 +111,7 @@ public class Simulation {
 		double gpVar = 0.5;
 		DoubleMatrix parameters = new DoubleMatrix(priceParameters);
 		int learnStart = 0;
-		int learnSize = 144;
+		int learnSize = 96;
 		int predictStart = learnStart + learnSize;
 		int predictSize = 48;
 		int dataPointsPerDay = 48;
@@ -130,10 +140,10 @@ public class Simulation {
 		ArrayList<Double> realPrices = new ArrayList<Double>();
 		ArrayList<Double> predictedPrices = new ArrayList<Double>();
 
-		ArrayList<Integer> actionsMDP = new ArrayList<Integer>();
-		ArrayList<Integer> actionsLPL = new ArrayList<Integer>();
-		ArrayList<Integer> actionsPAFL = new ArrayList<Integer>();
-		ArrayList<Integer> actionsSML = new ArrayList<Integer>();
+		ArrayList<Double> actionsMDP = new ArrayList<Double>();
+		ArrayList<Double> actionsLPL = new ArrayList<Double>();
+		ArrayList<Double> actionsPAFL = new ArrayList<Double>();
+		ArrayList<Double> actionsSML = new ArrayList<Double>();
 
 		ArrayList<Double> costsDailyMDP = new ArrayList<Double>();
 		ArrayList<Double> costsDailyLPL = new ArrayList<Double>();
@@ -152,12 +162,12 @@ public class Simulation {
 
 		DoubleMatrix printOutDaily = new DoubleMatrix(0,4);
 		DoubleMatrix printOutTimeSteps = new DoubleMatrix(0,4);
-
+		ArrayList<Double> timeStepsCounter = new ArrayList<Double>();
 		
 		// Start simulation
 		while(counter < numberOfRuns){
 
-
+			System.out.println("Run " + counter);
 			// sample the observed values from normal distributions
 			//!!! values need to be consistent
 			// qmin, tstart & tcrit actual values
@@ -235,14 +245,14 @@ public class Simulation {
 			GP priceGP = new GP(xTrainM,xTestM,parameters,cf,gpVar);
 			//			Main.printMatrix(xTestM);
 			//			Main.printMatrix(xTrainM);
-						Main.printMatrix(yTrainMPrices);
+//						Main.printMatrix(yTrainMPrices);
 			priceGP.setup(yTrainMPrices);
 			if(PROFILING){
 				System.out.println("Gaussian Process - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
 			}
 			DoubleMatrix predMeanPrices = priceGP.getPredMean().add(priceOffset);
 			DoubleMatrix predVarPrices = priceGP.getPredVar();
-			Main.printMatrix(predMeanPrices);
+//			Main.printMatrix(predMeanPrices);
 			// setup mdp
 			if(PROFILING){
 				time = System.nanoTime();
@@ -274,16 +284,16 @@ public class Simulation {
 					double[] sample = mvnd.sample();
 					double sampledVmin = sample[0] + qmin * sample[1];
 					double sampledMQ = sample[1];
-					System.out.println(i + " " + sampledVmin + " vminmq " + sampledMQ);
+					System.out.println(i + " " + sampledVmin + " vmin mq " + sampledMQ);
 					EVMDP samplemdp = new EVMDP(predMeanPrices, predVarPrices, deltaPrice, numSteps, qmax, qmin, sampledMQ, tstart  + endOfDayOffset, tcrit  + endOfDayOffset, sampledVmin,tdepLearnedMean + endOfDayOffset,tdepLearnedSD,currentLoadMDP,kwhPerUnit);
 					samplemdp.work();
 					double expectedSampleUtility = samplemdp.getqValues()[0][mdp.priceToState(realPriceMatrix.get(0)+priceOffset)][mdp.loadToState(currentLoadMDP)][0];
 					cumulatedDifference += expectedSampleUtility - expectedUtility;
 				}
 				System.out.println("stoppinval " + Math.abs(cumulatedDifference/numberOfSamplesForStoppingCriterion));
-//				if(Math.abs(cumulatedDifference/numberOfSamplesForStoppingCriterion) < stoppingCriterionThreshold){
-//					stopAsking = true;
-//				}
+				if(Math.abs(cumulatedDifference/numberOfSamplesForStoppingCriterion) < stoppingCriterionThreshold){
+					stopAsking = true;
+				}
 			}
 			if(PROFILING){
 				System.out.println("stopping criterion - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
@@ -305,31 +315,32 @@ public class Simulation {
 				costsPerDeltaTMDP.add(mdp.rewards(currentLoadMDP, actionMDP, realPriceMatrix.get(o)+priceOffset,o,0));
 				currentLoadMDP = mdp.updateLoad(currentLoadMDP, actionMDP);
 				loadsMDP.add(currentLoadMDP);
-				actionsMDP.add(actionMDP);
+				actionsMDP.add((double)actionMDP);
 				// Low price loader
 				int actionLPL = LPL.actionQuery(currentLoadLPL/kwhPerUnit, realPriceMatrix.get(o)+priceOffset);
 				totalUtilityLPL += mdp.rewards(currentLoadLPL, actionLPL, realPriceMatrix.get(o)+priceOffset,o,0);
 				costsPerDeltaTLPL.add(mdp.rewards(currentLoadLPL, actionLPL, realPriceMatrix.get(o)+priceOffset,o,0));
 				currentLoadLPL = mdp.updateLoad(currentLoadLPL, actionLPL);
-				actionsLPL.add(actionLPL);
+				actionsLPL.add((double)actionLPL);
 				loadsLPL.add(currentLoadLPL);
 				// plug and forget loader
 				int actionPAFL = PAFL.actionQuery(currentLoadPAFL/kwhPerUnit);
 				totalUtilityPAFL += mdp.rewards(currentLoadPAFL, actionPAFL, realPriceMatrix.get(o)+priceOffset,o,0);
 				costsPerDeltaTPAFL.add(mdp.rewards(currentLoadPAFL, actionPAFL, realPriceMatrix.get(o)+priceOffset,o,0));
 				currentLoadPAFL = mdp.updateLoad(currentLoadPAFL, actionPAFL);
-				actionsPAFL.add(actionPAFL);
+				actionsPAFL.add((double)actionPAFL);
 				loadsPAFL.add(currentLoadPAFL);
 				// SortedMinLoader
 				int actionSML = sml.policy[o];
 				totalUtilitySML += mdp.rewards(currentLoadSML, actionSML, realPriceMatrix.get(o)+priceOffset,o,0);
 				costsPerDeltaTSML.add(mdp.rewards(currentLoadSML, actionSML, realPriceMatrix.get(o)+priceOffset,o,0));
 				currentLoadSML = mdp.updateLoad(currentLoadSML, actionSML);
-				actionsSML.add(actionSML);
+				actionsSML.add((double)actionSML);
 				loadsSML.add(currentLoadSML);
 				//record prices
 				realPrices.add(realPriceMatrix.get(o));
 				predictedPrices.add(predMeanPrices.get(o));
+				timeStepsCounter.add((double)o);
 			}
 			System.out.println("endload MDP: " + currentLoadMDP);
 			System.out.println("endload LPL: " + currentLoadLPL);
@@ -403,6 +414,7 @@ public class Simulation {
 
 		}
 		//		printOut = DoubleMatrix.concatHorizontally(DoubleMatrix.concatHorizontally(DoubleMatrix.concatHorizontally(new DoubleMatrix(loads), new DoubleMatrix(realPrices)),new DoubleMatrix(predictedPrices)),new DoubleMatrix(totalUtilities));
+		// Simulation ends and we safe the data
 		Main.printMatrix(new DoubleMatrix(loadsMDP));
 		Main.printMatrix(new DoubleMatrix(loadsLPL));
 		Main.printMatrix(new DoubleMatrix(loadsPAFL));
@@ -421,8 +433,26 @@ public class Simulation {
 		dailyReport = DoubleMatrix.concatHorizontally(dailyReport, new DoubleMatrix(loadsDailyLPL));
 		dailyReport = DoubleMatrix.concatHorizontally(dailyReport, new DoubleMatrix(loadsDailyPAFL));
 		dailyReport = DoubleMatrix.concatHorizontally(dailyReport, new DoubleMatrix(loadsDailySML));
-		String fileName = "vmin" + (int)vminTrue + "mq" + (int)mqTrue + "kwh" + (int)kwhPerUnit + "tstart" + (int)tstartTrue + "tcrit" + (int)tcritTrue + "qmax" +(int)qmax + "qmin" + (int)qminTrue ;
+		
+		DoubleMatrix timeStepReport = DoubleMatrix.concatHorizontally(new DoubleMatrix(actionsMDP), new DoubleMatrix(actionsLPL));
+		timeStepReport = DoubleMatrix.concatHorizontally(timeStepReport, new DoubleMatrix(actionsPAFL));
+		timeStepReport = DoubleMatrix.concatHorizontally(timeStepReport, new DoubleMatrix(actionsSML));
+		timeStepReport = DoubleMatrix.concatHorizontally(timeStepReport, new DoubleMatrix(loadsMDP));
+		timeStepReport = DoubleMatrix.concatHorizontally(timeStepReport, new DoubleMatrix(loadsLPL));
+		timeStepReport = DoubleMatrix.concatHorizontally(timeStepReport, new DoubleMatrix(loadsPAFL));
+		timeStepReport = DoubleMatrix.concatHorizontally(timeStepReport, new DoubleMatrix(loadsSML));
+		timeStepReport = DoubleMatrix.concatHorizontally(timeStepReport, new DoubleMatrix(costsPerDeltaTMDP));
+		timeStepReport = DoubleMatrix.concatHorizontally(timeStepReport, new DoubleMatrix(costsPerDeltaTLPL));
+		timeStepReport = DoubleMatrix.concatHorizontally(timeStepReport, new DoubleMatrix(costsPerDeltaTPAFL));
+		timeStepReport = DoubleMatrix.concatHorizontally(timeStepReport, new DoubleMatrix(costsPerDeltaTSML));
+		timeStepReport = DoubleMatrix.concatHorizontally(timeStepReport, new DoubleMatrix(predictedPrices));
+		timeStepReport = DoubleMatrix.concatHorizontally(timeStepReport, new DoubleMatrix(realPrices));
+		timeStepReport = DoubleMatrix.concatHorizontally(timeStepReport, new DoubleMatrix(timeStepsCounter));
+
+		
+		String fileName = "vmin" + (int)vminvarInput + "mq" + (int)mqInput + "kwh" + (int)kwhPerUnit + "tstart" + (int)tstartTrue + "tcrit" + (int)tcritTrue + "qmax" +(int)qmaxInput + "qmin" + (int)(qminInput*100) ;
 		FileHandler.safeDailyReport(dailyReport, fileHandleOut  + fileName + "daily.csv");
+		FileHandler.safeTimeStepReport(timeStepReport, fileHandleOut + fileName + "timestep.csv");
 		//		FileHandler.matrixToCsv(printOut, fileHandleOut);
 
 	}

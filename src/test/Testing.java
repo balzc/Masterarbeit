@@ -27,8 +27,9 @@ public class Testing {
 	@Test
 	public void doTest(){
 		Simulation s = new Simulation();
+		//s.work(fhprices, fhout, vminvarInput, qminInput, qmaxInput, tstartInput, tcritInput, mqInput, kwhPerUnitInput)
 
-		s.work("/users/balz/documents/workspace/masterarbeit/data/adjustedPrices.csv","/users/balz/documents/workspace/masterarbeit/data/", 5000.,10.,20.,32.,34.,500.,44);
+		s.work("/users/balz/documents/workspace/masterarbeit/data/adjustedPrices.csv","/users/balz/documents/workspace/masterarbeit/data/", 27.,0.4,20.,14.,16.,27.,3);
 	}
 	
 //	@Test

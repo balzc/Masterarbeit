@@ -29,6 +29,7 @@ import gp.GP;
 public class Main {
 
 	public static void main(String[] args) {
+//		interpolate();
 		optimizeParams();
 //		makePriceFile();
 //		runSim(args);
@@ -38,6 +39,7 @@ public class Main {
 	
 	public static void runSim(String[] args){
 		Simulation s = new Simulation();
+		//s.work(fhprices, fhout, vminvarInput, qminInput, qmaxInput, tstartInput, tcritInput, mqInput, kwhPerUnitInput)
 		s.work(args[0], args[1], Double.valueOf(args[2]), Double.valueOf(args[3]), Double.valueOf(args[4]), Double.valueOf(args[5]),Double.valueOf(args[6]), Double.valueOf(args[7]),Double.valueOf(args[8]));
 	}
 	public static void testSim(){
@@ -373,7 +375,18 @@ public class Main {
 		FileHandler.matrixToCsv(result, "/Users/Balz/Downloads/Outlook/allPrices.csv");
 	}
 
-
+	public static void interpolate(){
+		DoubleMatrix dm = FileHandler.csvToMatrix("/users/balz/documents/workspace/masterarbeit/data/adjustedPrices.csv");
+		DoubleMatrix result = new DoubleMatrix(dm.rows*2, 1);
+		for(int i = 0; i < dm.rows*2-2; i += 2){
+			result.put((int)(i), dm.get((int)(i/2.),0));
+			result.put((int)(i+1), (dm.get((int)(i/2.),0)+dm.get((int)(i/2.+1),0))/2);
+		}
+		result.put((int)(dm.rows*2-2), dm.get(dm.rows-1,0));
+		FileHandler.matrixToCsv(result, "/users/balz/documents/workspace/masterarbeit/data/interpolatedPrices.csv");
+	}
+	
+	
 	public static void optimizeParams(){
 	/*	1.4016926456748566
 		5.939885027240675
@@ -391,42 +404,47 @@ public class Main {
 		CovarianceFunction cf = a1;
 		double gpVar = 0;
 		DoubleMatrix parameters = new DoubleMatrix(priceParameters);
-		int numsteps = 480;
+		int numsteps = 96;
 		double stepSize = 1./numsteps;
 		System.out.println(stepSize);
-
+		DoubleMatrix predictions = new DoubleMatrix(0,1);
+		int numruns = 1;
 		int learnSize = 2*numsteps;
 		int predictSize = numsteps;
+		DoubleMatrix priceData = FileHandler.csvToMatrix("/users/balz/documents/workspace/masterarbeit/data/interpolatedPrices.csv");
+
 		double learnStart = 0;
-		double predictStart = learnStart + learnSize;
-		double[] xTrain = new double[learnSize];
-		for(int o = 0; o < learnSize; o++){
-			xTrain[o] = o*stepSize+learnStart*stepSize;
-		}
-		DoubleMatrix xTrainM = new DoubleMatrix(xTrain);
-		double[] xTest = new double[predictSize];
-		for(int o = 0; o < predictSize; o++){
-			xTest[o] = o*stepSize + predictStart*stepSize;
-		}
-		
-//		printMatrix(xTrainM);
-		DoubleMatrix xTestM = new DoubleMatrix(xTest);
-//		printMatrix(xTestM);
+//		for(int i = 0; i < numruns; i++){
+			double predictStart = learnStart + learnSize;
+			double[] xTrain = new double[learnSize];
+			for(int o = 0; o < learnSize; o++){
+				xTrain[o] = o*stepSize+learnStart*stepSize;
+			}
+			DoubleMatrix xTrainM = new DoubleMatrix(xTrain);
+			double[] xTest = new double[predictSize];
+			for(int o = 0; o < predictSize; o++){
+				xTest[o] = o*stepSize + predictStart*stepSize;
+			}
 
-		GP  gp = new GP(xTrainM, xTestM, parameters, cf, gpVar);
-		DoubleMatrix priceData = FileHandler.csvToMatrix("/users/balz/documents/workspace/masterarbeit/data/pricesUK.csv");
-		gp.setup(subVector(0,learnSize,priceData));
+			//		printMatrix(xTrainM);
+			DoubleMatrix xTestM = new DoubleMatrix(xTest);
+			//		printMatrix(xTestM);
 
+			GP  gp = new GP(xTrainM, xTestM, parameters, cf, gpVar);
+			gp.setup(subVector(0,learnSize,priceData));
+			predictions = DoubleMatrix.concatVertically(predictions, gp.getPredMean());
+			learnStart = learnStart  + predictSize;
+//		}
 //		printMatrix(gp.getTrainCov());
-//		printMatrix(gp.getPredMean());
-//		printMatrix(subVector(learnSize, learnSize + predictSize, priceData));
-		System.out.println("RMSE at Start: " + computeRMSE(gp.getPredMean(),subVector(learnSize, learnSize + predictSize, priceData)) + " " + gp.calculateNegativeLogLikelihood(parameters));
+		printMatrix(predictions);
+		printMatrix(subVector(learnSize, learnSize + predictSize*numruns, priceData));
+		System.out.println("RMSE at Start: " + computeRMSE(predictions,subVector(learnSize, learnSize + predictSize*numruns, priceData)));
 
 		double rhobeg = .5;
 		double rhoend = 1.0e-4;
 		int iprint = 0;
 		int maxfun = 100;
-		int numRep = 100;
+		int numRep = 10;
 		int numVar = 6;//cf.getNumParams();
 		int numConstr = 2*numVar;
 		double upperBound = 10;
