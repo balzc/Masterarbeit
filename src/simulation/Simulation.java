@@ -77,7 +77,9 @@ public class Simulation {
 		double currentLoadSML = 0;
 
 		// Stopping criterion parameters
-		int numberOfSamplesForStoppingCriterion = 10;
+		int numberOfSamplesForStoppingCriterion = 1000;
+		int numberOfConcurrentThreads = 100;
+
 		double stoppingCriterionThreshold = 0.5;
 
 		// general simulation parameters
@@ -87,7 +89,7 @@ public class Simulation {
 		String fileHandleOut = fhout;
 		double priceOffset = 0;
 		int counter = 0;
-		int numberOfRuns = 10;
+		int numberOfRuns = 365;
 		double totalUtilityMDP = 0;
 		double totalUtilityLPL = 0;
 		double totalUtilityPAFL = 0;
@@ -274,21 +276,46 @@ public class Simulation {
 			}
 			// Check stopping criterion
 			if(!stopAsking){
+				int stoppingRunsCounter = 0;
 				double expectedUtility = mdp.getqValues()[0][mdp.priceToState(realPriceMatrix.get(0)+priceOffset)][mdp.loadToState(currentLoadMDP)][0];
 				double cumulatedDifference = 0;
 				double[][] covarianceMatrix = new double[2][2];
 				covarianceMatrix[0] = new double[] {bi.getAInv().get(0,0),bi.getAInv().get(0,1)};
 				covarianceMatrix[1] = new double[] {bi.getAInv().get(1,0),bi.getAInv().get(1,1)};
 				MultivariateNormalDistribution mvnd = new MultivariateNormalDistribution(new double[] {bi.getMean().get(0),bi.getMean().get(1)},covarianceMatrix);
-				for(int i = 0; i < numberOfSamplesForStoppingCriterion; i++){
-					double[] sample = mvnd.sample();
-					double sampledVmin = sample[0] + qmin * sample[1];
-					double sampledMQ = sample[1];
-					System.out.println(i + " " + sampledVmin + " vmin mq " + sampledMQ);
-					EVMDP samplemdp = new EVMDP(predMeanPrices, predVarPrices, deltaPrice, numSteps, qmax, qmin, sampledMQ, tstart  + endOfDayOffset, tcrit  + endOfDayOffset, sampledVmin,tdepLearnedMean + endOfDayOffset,tdepLearnedSD,currentLoadMDP,kwhPerUnit);
-					samplemdp.work();
-					double expectedSampleUtility = samplemdp.getqValues()[0][mdp.priceToState(realPriceMatrix.get(0)+priceOffset)][mdp.loadToState(currentLoadMDP)][0];
-					cumulatedDifference += expectedSampleUtility - expectedUtility;
+				for(int o = 0; o < numberOfSamplesForStoppingCriterion/numberOfConcurrentThreads; o++){
+					System.out.println("stoppinval run: "+ o);
+					SimulationThread[] sts = new SimulationThread[numberOfConcurrentThreads];
+					// start threads
+					for(int i = 0; i < numberOfConcurrentThreads; i++){
+						double[] sample = mvnd.sample();
+						double sampledVmin = sample[0] + qmin * sample[1];
+						double sampledMQ = sample[1];
+//						System.out.println(i + " " + sampledVmin + " vmin mq " + sampledMQ);
+						EVMDP samplemdp = new EVMDP(predMeanPrices, predVarPrices, deltaPrice, numSteps, qmax, qmin, sampledMQ, tstart  + endOfDayOffset, tcrit  + endOfDayOffset, sampledVmin,tdepLearnedMean + endOfDayOffset,tdepLearnedSD,currentLoadMDP,kwhPerUnit);
+						int[] indexes = new int[2];
+						indexes[0] = mdp.priceToState(realPriceMatrix.get(0)+priceOffset);
+						indexes[1] = mdp.loadToState(currentLoadMDP);
+						SimulationThread thread = new SimulationThread(samplemdp,stoppingRunsCounter,cumulatedDifference,expectedUtility,indexes);
+						thread.start();
+						sts[i] = thread;
+
+					}
+					// collect threads and sum cumulateddifferences
+					for(int i = 0; i < numberOfConcurrentThreads; i++){
+						SimulationThread b = sts[i];
+						try {
+							b.thread.join();
+//							System.out.println("cd " + cumulatedDifference);
+							cumulatedDifference += b.value;
+
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							System.out.println(e.getMessage());
+							e.printStackTrace();
+						}
+
+					}
 				}
 				System.out.println("stoppinval " + Math.abs(cumulatedDifference/numberOfSamplesForStoppingCriterion));
 				if(Math.abs(cumulatedDifference/numberOfSamplesForStoppingCriterion) < stoppingCriterionThreshold){
@@ -298,9 +325,10 @@ public class Simulation {
 			if(PROFILING){
 				System.out.println("stopping criterion - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
 			}
-			
+			// intialise the sorted min loader
 			SortedMinLoader sml = new SortedMinLoader();
 			sml.setup(Main.subVector(0, (int)(tdep + endOfDayOffset+1), predMeanPrices), qmax, currentLoadSML/kwhPerUnit);
+			// load according to the different agents
 			for(int o = 0; o < tdep + endOfDayOffset; o++){
 				if(mdp.priceToState(realPriceMatrix.get(o)+priceOffset) < 0){
 					System.out.println("Bad Price" + realPriceMatrix.get(o)+priceOffset);
@@ -415,13 +443,13 @@ public class Simulation {
 		}
 		//		printOut = DoubleMatrix.concatHorizontally(DoubleMatrix.concatHorizontally(DoubleMatrix.concatHorizontally(new DoubleMatrix(loads), new DoubleMatrix(realPrices)),new DoubleMatrix(predictedPrices)),new DoubleMatrix(totalUtilities));
 		// Simulation ends and we safe the data
-		Main.printMatrix(new DoubleMatrix(loadsMDP));
-		Main.printMatrix(new DoubleMatrix(loadsLPL));
-		Main.printMatrix(new DoubleMatrix(loadsPAFL));
-		Main.printMatrix(new DoubleMatrix(loadsSML));
-
-		Main.printMatrix(new DoubleMatrix(predictedPrices));
-		Main.printMatrix(new DoubleMatrix(realPrices));
+//		Main.printMatrix(new DoubleMatrix(loadsMDP));
+//		Main.printMatrix(new DoubleMatrix(loadsLPL));
+//		Main.printMatrix(new DoubleMatrix(loadsPAFL));
+//		Main.printMatrix(new DoubleMatrix(loadsSML));
+//
+//		Main.printMatrix(new DoubleMatrix(predictedPrices));
+//		Main.printMatrix(new DoubleMatrix(realPrices));
 		DoubleMatrix dailyReport = DoubleMatrix.concatHorizontally(new DoubleMatrix(totalUtilitiesMDP), new DoubleMatrix(totalUtilitiesLPL));
 		dailyReport = DoubleMatrix.concatHorizontally(dailyReport, new DoubleMatrix(totalUtilitiesPAFL));
 		dailyReport = DoubleMatrix.concatHorizontally(dailyReport, new DoubleMatrix(totalUtilitiesSML));
@@ -582,7 +610,40 @@ public class Simulation {
 			return false;
 		}
 	}
+	
+	public class SimulationThread implements Runnable{
+		public EVMDP mdp;
+		public int counter;
+		public double value;
+		public double expectedUtil;
+		public int[] indexes;
+		public Thread thread;
+	    private final Object lock = new Object();
 
+		public SimulationThread(EVMDP emdp, int counter, double value, double expectedUtil, int[] indexes){
+			this.mdp = emdp;
+			this.counter = counter;
+			this.value = value;
+			this.expectedUtil = expectedUtil;
+			this.indexes = indexes;
+		}
+		@Override
+		public void run() {
+			// TODO Auto-generated method stub
+			mdp.work();
+			double expectedSampleUtility = mdp.getqValues()[0][indexes[0]][indexes[1]][0];
+			value = expectedSampleUtility - expectedUtil;
+//			System.out.println("Donezo");
+			
+			
+		}
+		public void start(){
+			this.thread = new Thread(this);
+			this.thread.start();
+		}
+		
+		
+	}
 
 
 }

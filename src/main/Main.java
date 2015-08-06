@@ -17,6 +17,8 @@ import org.jblas.DoubleMatrix;
 
 
 
+import org.jblas.util.Random;
+
 import cobyla.Cobyla;
 
 import com.sun.corba.se.spi.ior.MakeImmutable;
@@ -409,11 +411,11 @@ public class Main {
 		System.out.println(stepSize);
 		DoubleMatrix predictions = new DoubleMatrix(0,1);
 		int numruns = 1;
-		int learnSize = 2*numsteps;
+		int learnSize = 3*numsteps;
 		int predictSize = numsteps;
 		DoubleMatrix priceData = FileHandler.csvToMatrix("/users/balz/documents/workspace/masterarbeit/data/interpolatedPrices.csv");
-
-		double learnStart = 0;
+		System.out.println("rows " + priceData.rows);
+		int learnStart = 0;
 //		for(int i = 0; i < numruns; i++){
 			double predictStart = learnStart + learnSize;
 			double[] xTrain = new double[learnSize];
@@ -426,25 +428,26 @@ public class Main {
 				xTest[o] = o*stepSize + predictStart*stepSize;
 			}
 
-			//		printMatrix(xTrainM);
+					printMatrix(xTrainM);
 			DoubleMatrix xTestM = new DoubleMatrix(xTest);
-			//		printMatrix(xTestM);
+					printMatrix(xTestM);
 
 			GP  gp = new GP(xTrainM, xTestM, parameters, cf, gpVar);
-			gp.setup(subVector(0,learnSize,priceData));
+			gp.setup(subVector(learnStart,learnStart+learnSize,priceData));
 			predictions = DoubleMatrix.concatVertically(predictions, gp.getPredMean());
 			learnStart = learnStart  + predictSize;
 //		}
 //		printMatrix(gp.getTrainCov());
 		printMatrix(predictions);
 		printMatrix(subVector(learnSize, learnSize + predictSize*numruns, priceData));
-		System.out.println("RMSE at Start: " + computeRMSE(predictions,subVector(learnSize, learnSize + predictSize*numruns, priceData)));
+		double startRmse = computeRMSE(predictions,subVector(learnSize, learnSize + predictSize*numruns, priceData));
+		System.out.println("RMSE at Start: " + startRmse);
 
 		double rhobeg = .5;
 		double rhoend = 1.0e-4;
 		int iprint = 0;
 		int maxfun = 100;
-		int numRep = 10;
+		int numRep = 100;
 		int numVar = 6;//cf.getNumParams();
 		int numConstr = 2*numVar;
 		double upperBound = 10;
@@ -484,7 +487,7 @@ public class Main {
 					bestVars = new DoubleMatrix(res[1]);
 
 				}
-				System.out.println(r + " RMSE: " + currentRMSE + " " + rmse + " " + maxLoglikeli );
+				System.out.println(r + " RMSE: " + currentRMSE + " " + rmse + " " + maxLoglikeli + " " +  res[0][0]);
 
 			} catch (Exception e) {
 				// TODO: handle exception
