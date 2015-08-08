@@ -6,6 +6,9 @@ public class SortedMinLoader {
 	public int[] policy;
 	public void setup(DoubleMatrix predictedPrices, double qmax,double qinitial){
 		policy = new int[predictedPrices.rows];
+		if((int)(qmax-qinitial+1) < 0){
+			System.out.println("qmax " + qmax + " qinitial " + qinitial);
+		}
 		double[] currentMins = new double[(int)(qmax-qinitial+1)];
 		int[] indexes = new int[(int)(qmax-qinitial+1)];
 		for(int j = 0; j < indexes.length; j++){
