@@ -99,6 +99,34 @@ public class FileHandler {
 		}
 	}
 	
+	public static void safeStoppingReport(DoubleMatrix m, String destination){
+		try
+		{		
+			FileWriter writer = new FileWriter(destination);
+			writer.append("Average Regret,");
+			writer.append("mq differences,");
+			writer.append("vmin differences,");
+
+			writer.append('\n');
+		
+
+			for(int i = 0; i < m.rows; i++){
+				for(int j = 0; j < m.columns; j++){
+					writer.append(""+m.get(i,j));
+					writer.append(',');
+				}
+				writer.append('\n');
+
+			}
+			writer.flush();
+			writer.close();
+		}
+		catch(IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+	
 	public static DoubleMatrix csvToMatrix(String filename){
 		BufferedReader br = null;
 		String line = "";

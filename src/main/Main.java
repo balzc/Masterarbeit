@@ -32,9 +32,9 @@ public class Main {
 
 	public static void main(String[] args) {
 //		interpolate();
-		optimizeParams();
+//		optimizeParams();
 //		makePriceFile();
-//		runSim(args);
+		runSim(args);
 //		testEVMDP("/users/balz/documents/workspace/masterarbeit/data/prices2.csv", "/users/balz/documents/workspace/masterarbeit/data/out.csv");
 //		testBayes();
 	}
@@ -42,11 +42,11 @@ public class Main {
 	public static void runSim(String[] args){
 		Simulation s = new Simulation();
 		//s.work(fhprices, fhout, vminvarInput, qminInput, qmaxInput, tstartInput, tcritInput, mqInput, kwhPerUnitInput)
-		s.work(args[0], args[1], Double.valueOf(args[2]), Double.valueOf(args[3]), Double.valueOf(args[4]), Double.valueOf(args[5]),Double.valueOf(args[6]), Double.valueOf(args[7]),Double.valueOf(args[8]));
+		s.work(args[0], args[1], Double.valueOf(args[2]), Double.valueOf(args[3]), Double.valueOf(args[4]), Double.valueOf(args[5]),Double.valueOf(args[6]), Double.valueOf(args[7]),Double.valueOf(args[8]),Double.valueOf(args[9]));
 	}
 	public static void testSim(){
 		Simulation s = new Simulation();
-		s.work("/users/balz/documents/workspace/masterarbeit/data/prices2.csv","/users/balz/documents/workspace/masterarbeit/data/out.csv", 300.,10.,20.,60.,65.,30.,44);
+		s.work("/users/balz/documents/workspace/masterarbeit/data/prices2.csv","/users/balz/documents/workspace/masterarbeit/data/out.csv", 300.,10.,20.,60.,65.,30.,44,5);
 	}
 	public static void testBayes(){
 		DoubleMatrix x = DoubleMatrix.concatVertically((new DoubleMatrix(new double[] {1,1,1,1,1})).transpose(),(new DoubleMatrix(new double[] {1,2,3,4,5})).transpose());
@@ -130,7 +130,7 @@ public class Main {
 			DoubleMatrix predVarPrices = priceGP.getPredVar();
 			EVMDP testmdp = new EVMDP(predMeanPrices,predVarPrices, .5,steps);
 
-			testmdp.work();
+			testmdp.setup();
 			// heat according to policy and update cumulative utility
 			int tmp = initialOffset+steps*trainSetSize;
 			for(int o = tmp; o < tmp + steps; o++){

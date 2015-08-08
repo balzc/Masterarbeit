@@ -83,9 +83,29 @@ public class EVMDP {
 		this.kwhPerUnit = wattPerUnitInput;
 		// deltat = (tcrit-tplug)/numsteps
 	}
+	public EVMDP( double qSlope, double vMin, double wattPerUnitInput, double[][][] priceprobs, double[][][] loadprobs, double[][][] endstateprobs, double[] prices ,double[] loads, int numsteps,double tstart, double tcrit, double tmean, double qrequired, double qmax) {
+
+
 	
+		this.sdScale = 6*deltaPrice;
+		this.priceProb = priceprobs;
+		this.loadProb = loadprobs;
+		this.endStateProb = endstateprobs;
+		this.prices = prices;
+		this.loads = loads;
+		this.qSlope = qSlope;
+		this.numSteps = numsteps;
+		this.vMin = vMin;
+		this.tMean = tmean;
+		this.tCrit = tcrit;
+		this.tStart = tstart;
+		this.kwhPerUnit = wattPerUnitInput;
+		this.qRequired = qrequired;
+		this.qMax = qmax;
+		// deltat = (tcrit-tplug)/numsteps
+	}
 	
-	public void work(){
+	public void setup(){
 		
 		computePrices();
 
@@ -103,6 +123,11 @@ public class EVMDP {
 //		printPrices();
 //		printOptPolicy();
 	}
+	public void fastSetup(){
+		solveMDP();
+	}
+	
+	
 	public double computeEndStateProb(int i, int j, int t){
 		if(i == j && i == 0){
 			return 1;
@@ -511,6 +536,46 @@ public double[][][][] getqValues() {
 
 public void setqValues(double[][][][] qValues) {
 	this.qValues = qValues;
+}
+
+public double[] getPrices() {
+	return prices;
+}
+
+public void setPrices(double[] prices) {
+	this.prices = prices;
+}
+
+public double[] getLoads() {
+	return loads;
+}
+
+public void setLoads(double[] loads) {
+	this.loads = loads;
+}
+
+public double[][][] getPriceProb() {
+	return priceProb;
+}
+
+public void setPriceProb(double[][][] priceProb) {
+	this.priceProb = priceProb;
+}
+
+public double[][][] getLoadProb() {
+	return loadProb;
+}
+
+public void setLoadProb(double[][][] loadProb) {
+	this.loadProb = loadProb;
+}
+
+public double[][][] getEndStateProb() {
+	return endStateProb;
+}
+
+public void setEndStateProb(double[][][] endStateProb) {
+	this.endStateProb = endStateProb;
 }
 
 
