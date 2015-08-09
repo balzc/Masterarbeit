@@ -56,10 +56,9 @@ public class Simulation {
 		// input is price per kwh, mqTrue is then price per loadunit
 		double mqTrue = mqInput*kwhPerUnitInput;
 
-		boolean log = true;
-
-		if(log) 
-			System.out.println("qmax " + qmax + "  qmin " + qminTrue + " vmin " + vminTrue + " mq " + mqTrue);
+		boolean log = false;
+		String runId = "qmax " + qmax + "  qmin " + qminTrue + " vmin " + vminTrue + " mq " + mqTrue + " kwh " + kwhPerUnitInput + " bisd "+ bisd;
+		System.out.println("qmax " + qmax + "  qmin " + qminTrue + " vmin " + vminTrue + " mq " + mqTrue + " kwh " + kwhPerUnitInput + " bisd "+ bisd);
 		double bayesInfSD = bisd;
 		double vminSD = 1.;// mqsd *qmin
 		double mqSD = 1.;//5
@@ -81,8 +80,8 @@ public class Simulation {
 		double currentLoadSML = 0;
 
 		// Stopping criterion parameters
-		int numberOfSamplesForStoppingCriterion = 10;
-		int numberOfConcurrentThreads = 2;
+		int numberOfSamplesForStoppingCriterion = 1000;
+		int numberOfConcurrentThreads = 100;
 
 		double stoppingCriterionThreshold = 0.5;
 
@@ -174,8 +173,7 @@ public class Simulation {
 
 		// Start simulation
 		while(counter < numberOfRuns){
-			if(log) 
-				System.out.println("Run " + counter);
+			System.out.println("Run " + counter + "   " + runId);
 			// sample the observed values from normal distributions
 			//!!! values need to be consistent
 			// qmin, tstart & tcrit actual values
@@ -233,6 +231,7 @@ public class Simulation {
 			}
 			double mqLearned = bi.getMean().get(1);
 			double vminLearned =  bi.getMean().get(0)+mqLearned*qmin;
+			if(log)
 			System.out.println("qmin "+ qmin);
 
 			if(PROFILING){
@@ -297,14 +296,13 @@ public class Simulation {
 				MultivariateNormalDistribution mvnd = new MultivariateNormalDistribution(new double[] {bi.getMean().get(0),bi.getMean().get(1)},covarianceMatrix);
 				for(int o = 0; o < numberOfSamplesForStoppingCriterion/numberOfConcurrentThreads; o++){
 					if(log)
-						System.out.println("stoppinval run: "+ o + " " + numberOfSamplesForStoppingCriterion/numberOfConcurrentThreads);
+					System.out.println("stoppinval run: "+ o + " " + numberOfSamplesForStoppingCriterion/numberOfConcurrentThreads + "    " + runId);
 					SimulationThread[] sts = new SimulationThread[numberOfConcurrentThreads];
 					// start threads
 					for(int i = 0; i < numberOfConcurrentThreads; i++){
 						double[] sample = mvnd.sample();
 						double sampledVmin = sample[0] + qmin * sample[1];
 						double sampledMQ = sample[1];
-						System.out.println("qmin "+ qmin);
 						if(log)
 							System.out.println(i +  " " + mqLearned + " " + vminLearned + " " + sampledVmin + " vmin mq " + sampledMQ + " eu " + expectedUtility + " sample 0 " + sample[0] + " sample 1 " + sample[1] + " bi 0 " + bi.getMean().get(0)+ " bi 1 " + bi.getMean().get(1));
 						EVMDP samplemdp = new EVMDP(sampledMQ, sampledVmin, kwhPerUnit, mdp.getPriceProb(), mdp.getLoadProb(), mdp.getEndStateProb(), mdp.getPrices(), mdp.getLoads(), numSteps,tstart + endOfDayOffset, tcrit + endOfDayOffset,tdepLearnedMean  + endOfDayOffset, qmin, qmax);
@@ -323,6 +321,7 @@ public class Simulation {
 						SimulationThread b = sts[i];
 						try {
 							b.thread.join();
+							if(log)
 							System.out.println("cd " + cumulatedDifference);
 							cumulatedDifference += b.value;
 
@@ -512,6 +511,7 @@ public class Simulation {
 		FileHandler.safeDailyReport(dailyReport, fileHandleOut  + fileName + "daily.csv");
 		FileHandler.safeTimeStepReport(timeStepReport, fileHandleOut + fileName + "timestep.csv");
 		FileHandler.safeStoppingReport(stoppingReport, fileHandleOut + fileName + "stopping.csv");
+		System.out.println("Done  " + runId);
 
 		//		FileHandler.matrixToCsv(printOut, fileHandleOut);
 
