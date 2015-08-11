@@ -30,8 +30,8 @@ public class EVMDP {
 	private double tMean;
 	private double tSD;
 	
+	long time = (long)0.;
 	private boolean PROFILING = false;
-	private double time;
 	private double[][][] priceProb;
 	private double[][][] loadProb;
 	private double[][][] endStateProb;
@@ -106,13 +106,34 @@ public class EVMDP {
 	}
 	
 	public void setup(){
-		
+		if(PROFILING){
+			time = System.nanoTime();
+		}
 		computePrices();
-
-
+		if(PROFILING){
+			System.out.println("ComputePrices - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
+		}
+		if(PROFILING){
+			time = System.nanoTime();
+		}
 		computeLoad();
+		if(PROFILING){
+			System.out.println("compute load - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
+		}
+		if(PROFILING){
+			time = System.nanoTime();
+		}
 		computeProbabilityTables();
+		if(PROFILING){
+			System.out.println("compute prob tables - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
+		}
+		if(PROFILING){
+			time = System.nanoTime();
+		}
 		solveMDP();
+		if(PROFILING){
+			System.out.println("solve - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
+		}
 //		printQvals();
 //		System.out.println("rewardtest " + rewards(879, 1, 100, 8, 0));
 //		printLoads();

@@ -2,6 +2,11 @@ package simulation;
 
 import gp.GP;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 
 import learning.BayesInf;
@@ -30,7 +35,7 @@ public class Simulation {
 	/*
 	 * @param blablabla
 	 */
-	public void work(String fhprices, String fhout, double vminvarInput, double qminInput, double qmaxInput, double tstartInput, double tcritInput, double mqInput, double kwhPerUnitInput,double bisd){
+	public void work(String fhprices, String fhout,String fhcomp, double vminvarInput, double qminInput, double qmaxInput, double tstartInput, double tcritInput, double mqInput, double kwhPerUnitInput,double bisd){
 		/* create User
 		 * get User feedback
 		 * learn Parameters
@@ -46,24 +51,23 @@ public class Simulation {
 		// input is the kwh of a car battery, qmax is then the number of timesteps required to fill that battery with kwhPerUnitInput
 		double qmax = qmaxInput/kwhPerUnitInput;
 		// input is a percentage number, qminTrue is then the number of timesteps required to fill the battery to that percentage
-		double qminTrue = qminInput*qmaxInput/kwhPerUnitInput;
+		double qminTrue = qminInput*qmaxInput/(kwhPerUnitInput*100);
 		// input is a price per kwh, vmintrue is then the number of units required for qmin times the price per kwh times kwh per unit
 		double vminTrue = vminvarInput*qminTrue*kwhPerUnitInput;
 		// input relative to time discretization
 		double tstartTrue = tstartInput;
 		// input relative to tstart, tcritTrue value relative to time discretization, tcritTrue is no offset anymore
 		double tcritTrue = tcritInput + tstartInput;
-		// input is price per kwh, mqTrue is then price per loadunit
+		// input is price per kwh, mqTrue is then utility per loadunit
 		double mqTrue = mqInput*kwhPerUnitInput;
 
-		boolean log = false;
+		boolean log = true;
 		String runId = "qmax " + qmax + "  qmin " + qminTrue + " vmin " + vminTrue + " mq " + mqTrue + " kwh " + kwhPerUnitInput + " bisd "+ bisd;
 		System.out.println("qmax " + qmax + "  qmin " + qminTrue + " vmin " + vminTrue + " mq " + mqTrue + " kwh " + kwhPerUnitInput + " bisd "+ bisd);
-		double bayesInfSD = bisd;
 		double vminSD = 1.;// mqsd *qmin
 		double mqSD = 1.;//5
 		double tdepTrueSD = 0.05;//15 min
-		double bayesInfVar = bayesInfSD*bayesInfSD;
+		double bayesInfVar = bisd;
 
 		double tdepTrueMean = tstartTrue;
 		double tdepLearnedMean = tstartTrue;
@@ -86,22 +90,24 @@ public class Simulation {
 		double stoppingCriterionThreshold = 0.5;
 
 		// general simulation parameters
+		int numberOfRuns = 365;
 		ArrayList<Double> tdepMeans = new ArrayList<Double>();
 		ArrayList<Double> vminList = new ArrayList<Double>();
 		ArrayList<Double> mqList = new ArrayList<Double>();
 		String fileHandleOut = fhout;
 		double priceOffset = 0;
 		int counter = 0;
-		int numberOfRuns = 365;
 		double totalUtilityMDP = 0;
 		double totalUtilityLPL = 0;
 		double totalUtilityPAFL = 0;
 		double totalUtilitySML = 0;
-
+		double mqLearned = mqTrue;
+		double vminLearned = vminTrue;
+		
 		ArrayList<Double> additionalLoadDataQ = new ArrayList<Double>();
 		ArrayList<Double> additionalLoadDataV = new ArrayList<Double>();
 		double[] loadDataQuestions = {0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1};
-		boolean stopAsking = false;
+		boolean notLearning = false;
 		// Price Prediction parameters
 		String fileHandlePrices = fhprices;//"/users/balz/documents/workspace/masterarbeit/data/prices2.csv";
 		DoubleMatrix priceSamples = FileHandler.csvToMatrix(fileHandlePrices);
@@ -184,7 +190,7 @@ public class Simulation {
 			double tstart = tstartTrue;//sampleFromNormal(tstarttrue, sd);
 			double tcrit = tcritTrue;//sampleFromNormal(tcrittrue, sd);
 			// if we don't have reached the stopping criterion yet ask the user about mq and vmin
-			if(!stopAsking){
+			if(!notLearning){
 				mq = sampleFromNormal(mqTrue, mqSD);
 				while(mq < 0 ){
 					mq = sampleFromNormal(mqTrue, mqSD);
@@ -212,7 +218,8 @@ public class Simulation {
 
 			// choose a Question at random and add the additional data
 			int rndQuestion = Random.nextInt(loadDataQuestions.length);
-			additionalLoadDataQ.add(qmin+(qmax-qmin)*loadDataQuestions[rndQuestion]);
+			double qvalue = qmin+(qmax-qmin)*loadDataQuestions[rndQuestion];
+			additionalLoadDataQ.add(qvalue);
 			additionalLoadDataV.add((vmin-qmin*mq)+(qmin + (qmax-qmin)*loadDataQuestions[rndQuestion])*mq);
 			DoubleMatrix xLoad = DoubleMatrix.concatVertically((DoubleMatrix.ones(counter+1)).transpose(),(new DoubleMatrix(additionalLoadDataQ)).transpose());
 			if(PROFILING){
@@ -223,14 +230,17 @@ public class Simulation {
 			}
 			// do Bayesian inference to get mq and vmin
 			BayesInf bi = new BayesInf(xLoad, new DoubleMatrix(additionalLoadDataV), bayesInfVar);
-			//			Main.printMatrix(xLoad);
-			//			Main.printMatrix(new DoubleMatrix(additionalLoadDataV));
-			bi.setup();
-			if(PROFILING){
-				System.out.println("Bayesian Inference - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
+			Main.printMatrix(xLoad);
+			Main.printMatrix(new DoubleMatrix(additionalLoadDataV));
+			if(!notLearning){
+				bi.setup();
+				if(PROFILING){
+					System.out.println("Bayesian Inference - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
+				}
+
+				mqLearned = bi.getMean().get(1);
+				vminLearned =  bi.getMean().get(0)+mqLearned*qmin;
 			}
-			double mqLearned = bi.getMean().get(1);
-			double vminLearned =  bi.getMean().get(0)+mqLearned*qmin;
 			if(log)
 			System.out.println("qmin "+ qmin);
 
@@ -271,8 +281,8 @@ public class Simulation {
 				System.out.println("tstart: " + (tstart  + endOfDayOffset) );
 
 				System.out.println("tcrit: " + (tcrit  + endOfDayOffset) );
-				System.out.println("vmin: " + vmin  );
-				System.out.println("mq: " + mq  );
+				System.out.println("vmin: " + vmin  + " " + vminLearned );
+				System.out.println("mq: " + mq  + " " + mqLearned );
 
 			}
 			EVMDP mdp = new EVMDP(predMeanPrices, predVarPrices, deltaPrice, numSteps, qmax, qmin, mqLearned, tstart + endOfDayOffset, tcrit + endOfDayOffset, vminLearned,tdepLearnedMean  + endOfDayOffset,tdepLearnedSD,currentLoadMDP,kwhPerUnit);
@@ -286,7 +296,7 @@ public class Simulation {
 				time = System.nanoTime();
 			}
 			// Check stopping criterion
-			if(!stopAsking){
+			if(!notLearning){
 				int stoppingRunsCounter = 0;
 				double expectedUtility = mdp.getqValues()[0][mdp.priceToState(realPriceMatrix.get(0)+priceOffset)][mdp.loadToState(currentLoadMDP)][0];
 				double cumulatedDifference = 0;
@@ -303,8 +313,8 @@ public class Simulation {
 						double[] sample = mvnd.sample();
 						double sampledVmin = sample[0] + qmin * sample[1];
 						double sampledMQ = sample[1];
-						if(log)
-							System.out.println(i +  " " + mqLearned + " " + vminLearned + " " + sampledVmin + " vmin mq " + sampledMQ + " eu " + expectedUtility + " sample 0 " + sample[0] + " sample 1 " + sample[1] + " bi 0 " + bi.getMean().get(0)+ " bi 1 " + bi.getMean().get(1));
+//						if(log)
+//							System.out.println(i +  " " + mqLearned + " " + vminLearned + " " + sampledVmin + " vmin mq " + sampledMQ + " eu " + expectedUtility + " sample 0 " + sample[0] + " sample 1 " + sample[1] + " bi 0 " + bi.getMean().get(0)+ " bi 1 " + bi.getMean().get(1));
 						EVMDP samplemdp = new EVMDP(sampledMQ, sampledVmin, kwhPerUnit, mdp.getPriceProb(), mdp.getLoadProb(), mdp.getEndStateProb(), mdp.getPrices(), mdp.getLoads(), numSteps,tstart + endOfDayOffset, tcrit + endOfDayOffset,tdepLearnedMean  + endOfDayOffset, qmin, qmax);
 
 
@@ -321,8 +331,8 @@ public class Simulation {
 						SimulationThread b = sts[i];
 						try {
 							b.thread.join();
-							if(log)
-							System.out.println("cd " + cumulatedDifference);
+//							if(log)
+//							System.out.println("cd " + cumulatedDifference);
 							cumulatedDifference += b.value;
 
 						} catch (InterruptedException e) {
@@ -337,7 +347,7 @@ public class Simulation {
 				if(log)
 					System.out.println("stoppinval " + avgRegret);
 				if(avgRegret < stoppingCriterionThreshold){
-					stopAsking = true;
+					notLearning = true;
 				}
 				regret.add(avgRegret);
 				mqDiffs.add(mq-mqLearned);
@@ -345,6 +355,9 @@ public class Simulation {
 			}
 			if(PROFILING){
 				System.out.println("stopping criterion - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
+			}
+			if(PROFILING){
+				time = System.nanoTime();
 			}
 			// intialise the sorted min loader
 			SortedMinLoader sml = new SortedMinLoader();
@@ -391,6 +404,12 @@ public class Simulation {
 				predictedPrices.add(predMeanPrices.get(o));
 				timeStepsCounter.add((double)o);
 			}
+			if(PROFILING){
+				System.out.println("loading - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
+			}
+			if(PROFILING){
+				time = System.nanoTime();
+			}
 			if(log){
 				System.out.println("endload MDP: " + currentLoadMDP);
 				System.out.println("endload LPL: " + currentLoadLPL);
@@ -421,18 +440,38 @@ public class Simulation {
 				System.out.println("total utility SML: " + totalUtilitySML);
 			}
 			counter++;
+			if(PROFILING){
+				System.out.println("update - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
+			}
+			if(PROFILING){
+				time = System.nanoTime();
+			}
+			// find out how much load was used during the day
 			double usedLoad = currentLoadMDP;
 			if(currentLoadMDP > 0){
 				double tempload = qmin*kwhPerUnit;
 				usedLoad = (int)sampleFromNormal(tempload, returnLoadSD);
-				while(usedLoad > currentLoadMDP || usedLoad < tempload){
-					usedLoad = (int)sampleFromNormal(tempload, returnLoadSD);
+				int c = 0;
+				if(!(Math.abs(tempload-currentLoadMDP) < 0.001)){
+					while((usedLoad > currentLoadMDP || usedLoad < tempload)&&c<100){
+						usedLoad = (int)sampleFromNormal(tempload, returnLoadSD);
+						c++;
+						if(c == 100){
+							usedLoad = currentLoadMDP;
+						}
+					}
 				}
 				if(log)
 					System.out.println("used Load " + usedLoad);
-				currentLoadMDP = currentLoadMDP - usedLoad;
+				currentLoadMDP = Math.max(currentLoadMDP - usedLoad,0);
 				if(log)
 					System.out.println("used Load " + usedLoad);
+			}
+			if(PROFILING){
+				System.out.println("return load sampling - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
+			}
+			if(PROFILING){
+				time = System.nanoTime();
 			}
 			currentLoadLPL = Math.max(0,currentLoadLPL - usedLoad);
 			currentLoadPAFL = Math.max(0,currentLoadPAFL - usedLoad);
@@ -465,7 +504,9 @@ public class Simulation {
 			totalUtilityLPL = 0;
 			totalUtilityPAFL = 0;
 			totalUtilitySML = 0;
-
+			if(PROFILING){
+				System.out.println("rest - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
+			}
 
 
 		}
@@ -507,128 +548,43 @@ public class Simulation {
 
 		DoubleMatrix stoppingReport = DoubleMatrix.concatHorizontally(DoubleMatrix.concatHorizontally(new DoubleMatrix(regret), new DoubleMatrix(mqDiffs)), new DoubleMatrix(vminDiffs));
 
-		String fileName = "vmin" + (int)vminvarInput + "mq" + (int)mqInput + "kwh" + (int)kwhPerUnit + "tstart" + (int)tstartTrue + "tcrit" + (int)tcritTrue + "qmax" +(int)qmaxInput + "qmin" + (int)(qminInput*100) + "bivar" + bayesInfVar ;
-		FileHandler.safeDailyReport(dailyReport, fileHandleOut  + fileName + "daily.csv");
-		FileHandler.safeTimeStepReport(timeStepReport, fileHandleOut + fileName + "timestep.csv");
-		FileHandler.safeStoppingReport(stoppingReport, fileHandleOut + fileName + "stopping.csv");
+		String fileName = "vmin" + (int)vminvarInput + "mq" + (int)mqInput + "kwh" + (int)kwhPerUnit + "tstart" + (int)tstartTrue + "tcrit" + (int)tcritInput + "qmax" +(int)qmaxInput + "qmin" + (int)(qminInput) + "bivar" +(int)(bayesInfVar) ;
+		new File(fileHandleOut + fileName).mkdir();
+		FileHandler.safeDailyReport(dailyReport, fileHandleOut  + fileName + "/daily.csv");
+		FileHandler.safeTimeStepReport(timeStepReport, fileHandleOut + fileName + "/timestep.csv");
+		FileHandler.safeStoppingReport(stoppingReport, fileHandleOut + fileName + "/stopping.csv");
 		System.out.println("Done  " + runId);
-
+		String append = vminvarInput + "," + mqInput + "," + kwhPerUnit + "," + tstartTrue + "," + tcritTrue + "," +qmaxInput + "," + (int)(qminInput) + "," + bayesInfVar+",";
+		String totalCosts = sum(costsDailyMDP)+ ","+ sum(costsDailyLPL)+","+ sum(costsDailyPAFL) +","+ sum(costsDailySML)+ ",";
+		String totalLoads = sum(loadsDailyMDP) + "," +sum(loadsDailyLPL) + "," +sum(loadsDailyPAFL) + "," +sum(loadsDailySML) + "," ;
+		String totalUtils = sum(totalUtilitiesMDP) + "," +sum(totalUtilitiesLPL) + "," +sum(totalUtilitiesPAFL) + "," +sum(totalUtilitiesSML) + ",";
+		String appendend = loadsMDP.size() + "," + regret.size() + "," + sum(regret)+ "," + sum(mqDiffs) + "," +sum(vminDiffs) + ",";
+		append += totalCosts +totalLoads + totalUtils + appendend + "\n";
+		try {
+		    Files.write(Paths.get(fhcomp), append.getBytes(), StandardOpenOption.APPEND);
+		}catch (IOException e) {
+		    //exception handling left as an exercise for the reader
+		}
 		//		FileHandler.matrixToCsv(printOut, fileHandleOut);
 
 	}
 
-	//	public GP predictPrices(){
-	//		String fileHandlePrices = prices;//"/users/balz/documents/workspace/masterarbeit/data/prices2.csv";
-	//
-	//		SquaredExponential c1 = new SquaredExponential();
-	//		Periodic c2 = new Periodic();
-	//		Matern m = new Matern();
-	//		Multiplicative mult = new Multiplicative(c1, c2);
-	//		Additive a1 = new Additive(mult, m);
-	//		
-	//		int noData = 96;
-	//		double stepsize = 1./96.;
-	//		double[] dataX = new double[noData];
-	//		double[] dataY =  new double[noData];
-	//		for(int i=0; i< dataX.length; i++){
-	//			dataX[i] = i*stepsize;
-	//		}
-	//		for(int i=0; i< noData; i++){
-	//			dataY[i] = 10;
-	//		}
-	//	
-	//		double[] dataP = {2,1.5,2,1,1.2,0.2,0.2};//{2,1.5,1,1.2,0.2,0.2}
-	//		double[] dataTest = new double[noData];// = {11,12,13,14,15,16};
-	//		for(int i = 0; i < dataTest.length/10; i++){
-	//			dataTest[i] = i*stepsize + noData*stepsize;
-	//		}
-	//		double nl = 0.05;		
-	//		DoubleMatrix priceSamples = FileHandler.csvToMatrix(fileHandlePrices);
-	//		DoubleMatrix predictedPrices = new DoubleMatrix();
-	//		DoubleMatrix P = new DoubleMatrix(dataP);
-	//		CovarianceFunction cf = a1;
-	//		int runs = 1;
-	//		double cumulativeU = 0;
-	//		double currentLoad = 0;
-	//		int steps = 96;
-	//		int trainSetSize = 1;
-	//		int initialOffset = 0;
-	//		double[] loads = new double[runs*steps];
-	//		int[] actions = new int[runs*steps];
-	//
-	//		DoubleMatrix priceSimple1 = DoubleMatrix.ones(24).mul(40);
-	//		DoubleMatrix priceSimple2 = DoubleMatrix.ones(24).mul(40);
-	//		DoubleMatrix priceSimple3 = DoubleMatrix.ones(24).mul(0);
-	//		DoubleMatrix priceSimple4 = DoubleMatrix.ones(24).mul(0);
-	//		DoubleMatrix priceSimple = DoubleMatrix.concatVertically(priceSimple1, priceSimple2);
-	//		priceSimple = DoubleMatrix.concatVertically(priceSimple, priceSimple3);
-	//		priceSimple = DoubleMatrix.concatVertically(priceSimple, priceSimple4);
-	//
-	//		for(int i = 0; i < runs; i++){
-	//			double[] xTrain = new double[steps*trainSetSize];
-	//			for(int o = 0; o < steps*trainSetSize; o++){
-	//				xTrain[o] = o*stepsize+initialOffset*stepsize;
-	//			}
-	//			DoubleMatrix xTrainM = new DoubleMatrix(xTrain);
-	//			double[] xTest = new double[steps];
-	//			for(int o = 0; o < steps; o++){
-	//				xTest[o] = o*stepsize + (initialOffset+steps)*stepsize*trainSetSize;
-	//			}
-	//			DoubleMatrix xTestM = new DoubleMatrix(xTest);
-	//
-	//			
-	//		
-	//			DoubleMatrix yTrainMPrices = subVector(initialOffset, initialOffset+steps*trainSetSize, priceSamples);
-	////			printMatrix(xTrainM);
-	////			printMatrix(xTestM);
-	//			GP priceGP = new GP(xTrainM,xTestM,P,cf,nl);
-	//			priceGP.setup(yTrainMPrices);
-	//			DoubleMatrix predMeanPrices = priceGP.getPredMean().add(20);
-	//			DoubleMatrix predVarPrices = priceGP.getPredVar();
-	//			EVMDP mdp = new EVMDP(predMeanPrices,predVarPrices, .5,steps);
-	//
-	//			mdp.work();
-	//			// heat according to policy and update cumulative utility
-	//			int tmp = initialOffset+steps*trainSetSize;
-	//			for(int o = tmp; o < tmp + steps; o++){
-	////				System.out.println(o  + " " + testmdp.priceToState(predMeanPrices.get(o-tmp))+ " " +  currentLoad );
-	//				int action = mdp.getOptPolicy()[o-tmp][mdp.priceToState(predMeanPrices.get(o-tmp))][mdp.loadToState(currentLoad)];
-	//				cumulativeU += mdp.rewards(currentLoad, action, priceSamples.get(o)+20,o);
-	//				currentLoad = mdp.updateLoad(currentLoad, action);
-	//
-	//				loads[o-steps*trainSetSize-initialOffset] = currentLoad;
-	//				actions[o-steps*trainSetSize-initialOffset] = action;
-	//			}
-	//			initialOffset += steps;
-	//			if(i > 0){
-	//				predictedPrices = DoubleMatrix.concatVertically(predictedPrices, predMeanPrices);
-	//			} else {
-	//				predictedPrices = predMeanPrices;
-	//			}
-	//
-	//		}
-	//		printMatrix(subVector(steps*trainSetSize, steps*trainSetSize+runs*steps, priceSamples).add(20));
-	//		System.out.println();
-	//
-	//		printMatrix(predictedPrices);
-	//		System.out.println();
-	//
-	//		System.out.print("[");
-	//		for(int i = 0; i< loads.length; i++){
-	//			System.out.print(loads[i] + "; ");
-	//
-	//		}
-	//		System.out.println("]");
-	//		System.out.print("[");
-	//		for(int i = 0; i< actions.length; i++){
-	//			System.out.print(actions[i] + "; ");
-	//
-	//		}
-	//		System.out.println("]");
-	//		System.out.println(cumulativeU);
-	//		FileHandler.matrixToCsv(predictedPrices, out);
-	//	}
-
+	
+	public double avg(ArrayList<Double> input){
+		double result = 0;
+		for(Double d: input){
+			result += d;
+		}
+		return result/input.size();
+	}
+	public double sum(ArrayList<Double> input){
+		double result = 0;
+		for(Double d: input){
+			result += d;
+		}
+		return result;
+	}
+	
 	public double sampleFromNormal(double mean, double sd){
 		NormalDistribution nd = new NormalDistribution(mean, sd);
 		return nd.sample();
