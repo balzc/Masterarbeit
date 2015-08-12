@@ -34,6 +34,7 @@ public class Main {
 //		interpolate();
 //		optimizeParams();
 //		makePriceFile();
+//		makeNoPeakFile();
 		runSim(args);
 //		testEVMDP("/users/balz/documents/workspace/masterarbeit/data/prices2.csv", "/users/balz/documents/workspace/masterarbeit/data/out.csv");
 //		testBayes();
@@ -236,6 +237,28 @@ public class Main {
 		}
 		System.out.println("]");
 	}
+	
+	public static void makeNoPeakFile(){
+		String fileHandlePrices = "/users/balz/documents/workspace/masterarbeit/data/interpolatedPrices.csv";
+		String destination1 = "/users/balz/documents/workspace/masterarbeit/data/noPeakPrices.csv";
+		String destination2 = "/users/balz/documents/workspace/masterarbeit/data/peakIndexes.csv";
+		String destination3= "/users/balz/documents/workspace/masterarbeit/data/flatPrices.csv";
+
+		DoubleMatrix dm = FileHandler.csvToMatrix(fileHandlePrices);
+		DoubleMatrix indexes = DoubleMatrix.zeros(dm.rows);
+		DoubleMatrix result = dm.dup();
+		for(int i = 0; i < dm.rows; i++){
+			if(result.get(i,0) >= 34){
+				result.put(i,0,20);
+				indexes.put(i,0,1);
+			}
+		}
+		FileHandler.matrixToCsv(indexes, destination2);
+		FileHandler.matrixToCsv(DoubleMatrix.ones(dm.rows).mul(20), destination3);
+
+		FileHandler.matrixToCsv(result, destination1);
+	}
+	
 	public static void test1(){
 		String fileHandlePrices = "/users/balz/documents/workspace/masterarbeit/data/prices2.csv";
 		String fileHandleTemps = "/users/balz/documents/workspace/masterarbeit/data/temps2.csv";

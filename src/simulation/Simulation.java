@@ -46,7 +46,9 @@ public class Simulation {
 		 */
 		boolean PROFILING = false;
 		long time = (long)0.;
-
+		if(!PROFILING){
+			time = System.nanoTime();
+		}
 		// user intrinsic parameters
 		// input is the kwh of a car battery, qmax is then the number of timesteps required to fill that battery with kwhPerUnitInput
 		double qmax = qmaxInput/kwhPerUnitInput;
@@ -61,7 +63,7 @@ public class Simulation {
 		// input is price per kwh, mqTrue is then utility per loadunit
 		double mqTrue = mqInput*kwhPerUnitInput;
 
-		boolean log = true;
+		boolean log = false;
 		String runId = "qmax " + qmax + "  qmin " + qminTrue + " vmin " + vminTrue + " mq " + mqTrue + " kwh " + kwhPerUnitInput + " bisd "+ bisd;
 		System.out.println("qmax " + qmax + "  qmin " + qminTrue + " vmin " + vminTrue + " mq " + mqTrue + " kwh " + kwhPerUnitInput + " bisd "+ bisd);
 		double vminSD = 1.;// mqsd *qmin
@@ -85,7 +87,7 @@ public class Simulation {
 
 		// Stopping criterion parameters
 		int numberOfSamplesForStoppingCriterion = 1000;
-		int numberOfConcurrentThreads = 100;
+		int numberOfConcurrentThreads = 10;
 
 		double stoppingCriterionThreshold = 0.5;
 
@@ -179,6 +181,7 @@ public class Simulation {
 
 		// Start simulation
 		while(counter < numberOfRuns){
+			if(counter%100 == 0)
 			System.out.println("Run " + counter + "   " + runId);
 			// sample the observed values from normal distributions
 			//!!! values need to be consistent
@@ -230,8 +233,8 @@ public class Simulation {
 			}
 			// do Bayesian inference to get mq and vmin
 			BayesInf bi = new BayesInf(xLoad, new DoubleMatrix(additionalLoadDataV), bayesInfVar);
-			Main.printMatrix(xLoad);
-			Main.printMatrix(new DoubleMatrix(additionalLoadDataV));
+//			Main.printMatrix(xLoad);
+//			Main.printMatrix(new DoubleMatrix(additionalLoadDataV));
 			if(!notLearning){
 				bi.setup();
 				if(PROFILING){
@@ -305,7 +308,8 @@ public class Simulation {
 				covarianceMatrix[1] = new double[] {bi.getAInv().get(1,0),bi.getAInv().get(1,1)};
 				MultivariateNormalDistribution mvnd = new MultivariateNormalDistribution(new double[] {bi.getMean().get(0),bi.getMean().get(1)},covarianceMatrix);
 				for(int o = 0; o < numberOfSamplesForStoppingCriterion/numberOfConcurrentThreads; o++){
-					if(log)
+//					if(log)
+					if(o%10 == 0)
 					System.out.println("stoppinval run: "+ o + " " + numberOfSamplesForStoppingCriterion/numberOfConcurrentThreads + "    " + runId);
 					SimulationThread[] sts = new SimulationThread[numberOfConcurrentThreads];
 					// start threads
@@ -553,7 +557,9 @@ public class Simulation {
 		FileHandler.safeDailyReport(dailyReport, fileHandleOut  + fileName + "/daily.csv");
 		FileHandler.safeTimeStepReport(timeStepReport, fileHandleOut + fileName + "/timestep.csv");
 		FileHandler.safeStoppingReport(stoppingReport, fileHandleOut + fileName + "/stopping.csv");
-		System.out.println("Done  " + runId);
+		if(!PROFILING){
+			System.out.println("Total - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s " + runId);
+		}		
 		String append = vminvarInput + "," + mqInput + "," + kwhPerUnit + "," + tstartTrue + "," + tcritTrue + "," +qmaxInput + "," + (int)(qminInput) + "," + bayesInfVar+",";
 		String totalCosts = sum(costsDailyMDP)+ ","+ sum(costsDailyLPL)+","+ sum(costsDailyPAFL) +","+ sum(costsDailySML)+ ",";
 		String totalLoads = sum(loadsDailyMDP) + "," +sum(loadsDailyLPL) + "," +sum(loadsDailyPAFL) + "," +sum(loadsDailySML) + "," ;

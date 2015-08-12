@@ -35,7 +35,10 @@ public class EVMDP {
 	private double[][][] priceProb;
 	private double[][][] loadProb;
 	private double[][][] endStateProb;
-
+	
+	private double minPrice;
+	private double maxPrice;
+	
 	private int numSteps;
 
 	private double kwhPerUnit;
@@ -70,7 +73,7 @@ public class EVMDP {
 		this.predCovPrice = predCovPrice;
 		this.deltaPrice = deltaPrice;
 		this.numSteps = numSteps;
-		this.sdScale = 6*deltaPrice;
+		this.sdScale = deltaPrice;
 		this.qMax = qMax;
 		this.qRequired = qRequired;
 		this.qSlope = qSlope;
@@ -87,7 +90,7 @@ public class EVMDP {
 
 
 	
-		this.sdScale = 6*deltaPrice;
+		this.sdScale = deltaPrice;
 		this.priceProb = priceprobs;
 		this.loadProb = loadprobs;
 		this.endStateProb = endstateprobs;
@@ -130,6 +133,9 @@ public class EVMDP {
 		if(PROFILING){
 			time = System.nanoTime();
 		}
+//		System.out.println("min " + minPrice + " max " + maxPrice);
+//		printPrices();
+
 		solveMDP();
 		if(PROFILING){
 			System.out.println("solve - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
@@ -224,12 +230,12 @@ public class EVMDP {
 
 	// Tested, Works as intended
 	public void computePrices(){
-		double minPrice = 0;//findMinimumPrice();
-		double maxPrice = 180;//findMaximumPrice();
+		this.minPrice = findMinimumPrice();
+		this.maxPrice = findMaximumPrice();
 
 		minPrice = Math.floor((minPrice/deltaPrice + 0.5))*deltaPrice;
 
-		int numPrice = (int)(((maxPrice - minPrice))/(deltaPrice))+1;
+		int numPrice = (int)(((maxPrice - minPrice))/(deltaPrice))+2;
 		this.prices = new double[numPrice];
 		for(int i = 0; i<numPrice; i++){
 			this.prices[i] = minPrice + i*deltaPrice;
@@ -305,11 +311,21 @@ public class EVMDP {
 	public int priceToState(double price){
 		int index = -1;
 		double p = roundToNextPrice(price, deltaPrice);
+		if(price < prices[0]){
+			return 0;
+		} else if( price > prices[prices.length-1]){
+			return prices.length - 1;
+		}
+		
 		for(int i = 0; i<prices.length; i++){
 			if (Math.abs(prices[i]-p)<tol) {
 				index = i;
 				break;
 			}
+		}
+		if(index < 0){
+			System.out.println("grave error " + price + " " + maxPrice + " " + minPrice);
+			printPrices();
 		}
 		return index;
 	}
