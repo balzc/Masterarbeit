@@ -141,7 +141,7 @@ public class EVMDP {
 			System.out.println("solve - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
 		}
 //		printQvals();
-//		System.out.println("rewardtest " + rewards(879, 1, 100, 8, 0));
+//		System.out.println("rewardtest " + rewards(60, 1, 20, 8, 0));
 //		printLoads();
 //
 //		for(int i = 0; i < numSteps-1; i++){
@@ -215,7 +215,7 @@ public class EVMDP {
 	// Tested, Works as intended
 	public void computeLoad(){
 		int qRange = (int)(qMax-qInitial/kwhPerUnit+1);
-		if(qInitial + qRange-1 * kwhPerUnit < qMax * kwhPerUnit){
+		if(qInitial + (qRange-1) * kwhPerUnit - qMax * kwhPerUnit>0){
 			this.loads = new double[qRange+1];
 			loads[qRange] = qMax*kwhPerUnit;
 		} else {
@@ -271,6 +271,9 @@ public class EVMDP {
 	public double rewards(double q, int action, double price, int t, int endState){
 		double loadToMax = Math.min((qMax*kwhPerUnit-q),kwhPerUnit);
 		double cost = price * action * loadToMax;
+		if(cost < 0.0001 && action == 1){
+			return -1;
+		}
 //		if(value(q+action * wattPerUnit,t+1) >= value(q,t)){
 		if(endState == 1){
 			return value(q,t);

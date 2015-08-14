@@ -3,6 +3,7 @@ package main;
 import java.io.File;
 
 import learning.BayesInf;
+import lpsolver.LpSolver;
 import mdp.EVMDP;
 import mdp.HomeHeatingMDP;
 
@@ -35,10 +36,12 @@ public class Main {
 //		optimizeParams();
 //		makePriceFile();
 //		makeNoPeakFile();
-		runSim(args);
+//		runSim(args);
+		runLpSolver();
 //		testEVMDP("/users/balz/documents/workspace/masterarbeit/data/prices2.csv", "/users/balz/documents/workspace/masterarbeit/data/out.csv");
 //		testBayes();
 	}
+	
 	
 	public static void runSim(String[] args){
 		Simulation s = new Simulation();
@@ -49,6 +52,10 @@ public class Main {
 		Simulation s = new Simulation();
 		s.work("/users/balz/documents/workspace/masterarbeit/data/prices2.csv","/users/balz/documents/workspace/masterarbeit/data/out.csv","/users/balz/documents/workspace/masterarbeit/data/comp.csv", 300.,10.,20.,60.,65.,30.,44,5);
 	}
+	public static void runLpSolver(){
+		LpSolver.doWork();
+	}
+	
 	public static void testBayes(){
 		DoubleMatrix x = DoubleMatrix.concatVertically((new DoubleMatrix(new double[] {1,1,1,1,1})).transpose(),(new DoubleMatrix(new double[] {1,2,3,4,5})).transpose());
 		DoubleMatrix y = new DoubleMatrix(new double[] {3,5,7,9,11});
@@ -433,13 +440,13 @@ public class Main {
 		double stepSize = 1./numsteps;
 		System.out.println(stepSize);
 		DoubleMatrix predictions = new DoubleMatrix(0,1);
-		int numruns = 1;
+		int numruns = 10;
 		int learnSize = 3*numsteps;
 		int predictSize = numsteps;
-		DoubleMatrix priceData = FileHandler.csvToMatrix("/users/balz/documents/workspace/masterarbeit/data/interpolatedPrices.csv");
+		DoubleMatrix priceData = FileHandler.csvToMatrix("/users/balz/documents/workspace/masterarbeit/data/noPeakPrices.csv");
 		System.out.println("rows " + priceData.rows);
 		int learnStart = 0;
-//		for(int i = 0; i < numruns; i++){
+		for(int i = 0; i < numruns; i++){
 			double predictStart = learnStart + learnSize;
 			double[] xTrain = new double[learnSize];
 			for(int o = 0; o < learnSize; o++){
@@ -459,7 +466,7 @@ public class Main {
 			gp.setup(subVector(learnStart,learnStart+learnSize,priceData));
 			predictions = DoubleMatrix.concatVertically(predictions, gp.getPredMean());
 			learnStart = learnStart  + predictSize;
-//		}
+		}
 //		printMatrix(gp.getTrainCov());
 		printMatrix(predictions);
 		printMatrix(subVector(learnSize, learnSize + predictSize*numruns, priceData));
@@ -470,7 +477,7 @@ public class Main {
 		double rhoend = 1.0e-4;
 		int iprint = 0;
 		int maxfun = 100;
-		int numRep = 100;
+		int numRep = 1;
 		int numVar = 6;//cf.getNumParams();
 		int numConstr = 2*numVar;
 		double upperBound = 10;
@@ -481,43 +488,43 @@ public class Main {
 		double[][] res = null;
 		double currentRMSE = Double.POSITIVE_INFINITY;
 		DoubleMatrix bestVars = new DoubleMatrix();
-		for (int r = 0; r<numRep; r++){
-			for (int i = 0; i<numVar; i++){
-				startX[i] = priceParameters[i];//Math.random()*upperBound;
-				
-			}
-			if(numVar==8){
-				startX[6] = Math.random();
-			}
-
-			try {
-				res =  Cobyla.FindMinimum(gp, numVar, numConstr, startX, rhobeg, rhoend, iprint, maxfun);
-				if(res[0][0]>maxLoglikeli){
-					maxLoglikeli = res[0][0];
-					opt[0][0] = res[0][0];
-				}
-
-				
-				System.out.println("loglikeli:"+res[0][0]);
-				for(int i = 0; i<res[1].length; i++){
-					System.out.println(res[1][i]);
-				}
-				GP newGP = new GP(xTrainM,xTestM, new DoubleMatrix(res[1]),cf,gpVar);
-				newGP.setup(subVector(0,learnSize,priceData));
-				double rmse = computeRMSE(newGP.getPredMean(),subVector(learnSize, learnSize + predictSize, priceData));
-				if(rmse < currentRMSE){
-					currentRMSE = rmse;
-					bestVars = new DoubleMatrix(res[1]);
-
-				}
-				System.out.println(r + " RMSE: " + currentRMSE + " " + rmse + " " + maxLoglikeli + " " +  res[0][0]);
-
-			} catch (Exception e) {
-				// TODO: handle exception
-			}
-
-		}
-		printMatrix(bestVars);
+//		for (int r = 0; r<numRep; r++){
+//			for (int i = 0; i<numVar; i++){
+//				startX[i] = priceParameters[i];//Math.random()*upperBound;
+//				
+//			}
+//			if(numVar==8){
+//				startX[6] = Math.random();
+//			}
+//
+//			try {
+//				res =  Cobyla.FindMinimum(gp, numVar, numConstr, startX, rhobeg, rhoend, iprint, maxfun);
+//				if(res[0][0]>maxLoglikeli){
+//					maxLoglikeli = res[0][0];
+//					opt[0][0] = res[0][0];
+//				}
+//
+//				
+//				System.out.println("loglikeli:"+res[0][0]);
+//				for(int i = 0; i<res[1].length; i++){
+//					System.out.println(res[1][i]);
+//				}
+//				GP newGP = new GP(xTrainM,xTestM, new DoubleMatrix(res[1]),cf,gpVar);
+//				newGP.setup(subVector(0,learnSize,priceData));
+//				double rmse = computeRMSE(newGP.getPredMean(),subVector(learnSize, learnSize + predictSize, priceData));
+//				if(rmse < currentRMSE){
+//					currentRMSE = rmse;
+//					bestVars = new DoubleMatrix(res[1]);
+//
+//				}
+//				System.out.println(r + " RMSE: " + currentRMSE + " " + rmse + " " + maxLoglikeli + " " +  res[0][0]);
+//
+//			} catch (Exception e) {
+//				// TODO: handle exception
+//			}
+//
+//		}
+//		printMatrix(bestVars);
 
 		
 	}

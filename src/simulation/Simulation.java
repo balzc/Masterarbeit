@@ -88,11 +88,10 @@ public class Simulation {
 		// Stopping criterion parameters
 		int numberOfSamplesForStoppingCriterion = 1000;
 		int numberOfConcurrentThreads = 10;
-
 		double stoppingCriterionThreshold = 0.5;
-
 		// general simulation parameters
 		int numberOfRuns = 365;
+		
 		ArrayList<Double> tdepMeans = new ArrayList<Double>();
 		ArrayList<Double> vminList = new ArrayList<Double>();
 		ArrayList<Double> mqList = new ArrayList<Double>();
@@ -274,7 +273,8 @@ public class Simulation {
 			}
 			DoubleMatrix predMeanPrices = priceGP.getPredMean().add(priceOffset);
 			DoubleMatrix predVarPrices = priceGP.getPredVar();
-			//			Main.printMatrix(predMeanPrices);
+//			Main.printMatrix(predMeanPrices);
+//			Main.printMatrix(Main.subVector(predictStart, predictStart+predictSize, priceSamples));
 			// setup mdp
 			if(PROFILING){
 				time = System.nanoTime();
@@ -406,7 +406,7 @@ public class Simulation {
 				//record prices
 				realPrices.add(realPriceMatrix.get(o));
 				predictedPrices.add(predMeanPrices.get(o));
-				timeStepsCounter.add((double)o);
+				timeStepsCounter.add((double)o+predictStart);
 			}
 			if(PROFILING){
 				System.out.println("loading - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
@@ -566,10 +566,15 @@ public class Simulation {
 		String totalUtils = sum(totalUtilitiesMDP) + "," +sum(totalUtilitiesLPL) + "," +sum(totalUtilitiesPAFL) + "," +sum(totalUtilitiesSML) + ",";
 		String appendend = loadsMDP.size() + "," + regret.size() + "," + sum(regret)+ "," + sum(mqDiffs) + "," +sum(vminDiffs) + ",";
 		append += totalCosts +totalLoads + totalUtils + appendend + "\n";
+		if(append.split(",").length != 26){
+			try {
+			    Files.write(Paths.get(fhout+ "/err.txt"),("grave Error: "+ append).getBytes(), StandardOpenOption.APPEND);
+			}catch (IOException e) {
+			}
+		}
 		try {
 		    Files.write(Paths.get(fhcomp), append.getBytes(), StandardOpenOption.APPEND);
 		}catch (IOException e) {
-		    //exception handling left as an exercise for the reader
 		}
 		//		FileHandler.matrixToCsv(printOut, fileHandleOut);
 
