@@ -169,6 +169,7 @@ public class FileHandler {
 		return result;
 	}
 	
+
 	public static void resultsToFile(String content, String destination){
 		try
 		{		

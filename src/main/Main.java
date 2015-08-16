@@ -37,9 +37,10 @@ public class Main {
 //		makePriceFile();
 //		makeNoPeakFile();
 //		runSim(args);
-		runLpSolver();
+//		runLpSolver();
 //		testEVMDP("/users/balz/documents/workspace/masterarbeit/data/prices2.csv", "/users/balz/documents/workspace/masterarbeit/data/out.csv");
 //		testBayes();
+		peakStatistics();
 	}
 	
 	
@@ -54,6 +55,35 @@ public class Main {
 	}
 	public static void runLpSolver(){
 		LpSolver.doWork();
+	}
+	
+	public static void peakStatistics(){
+		String indexesString = "/users/balz/documents/workspace/masterarbeit/data/peakIndexes.csv";
+		String noPeakString = "/users/balz/documents/workspace/masterarbeit/data/peaksNoPeaks/normalPrices/";
+		String normalString = "/users/balz/documents/workspace/masterarbeit/data/peaksNoPeaks/noPeakPrices/";
+		String timestep = "/timestep.csv";
+	    File[] files = new File(normalString).listFiles();
+		int noPeakCounter = 0;
+		int normalCounter = 0;
+        DoubleMatrix indexes = FileHandler.csvToMatrix(indexesString);
+
+	    for (File file : files) {
+	        if (file.isDirectory()) {
+	            System.out.println("Directory: " + file.getName());
+	    		DoubleMatrix noPeak = FileHandler.csvToMatrix(noPeakString+file.getName()+timestep);
+	    		DoubleMatrix normal = FileHandler.csvToMatrix(normalString+file.getName()+timestep);
+	    		for(int i = 0; i < noPeak.rows; i++){
+	    			noPeakCounter += noPeak.get(i,0)*indexes.get((int)noPeak.get(i,14),0);
+	    		}
+	    		for(int i = 0; i < normal.rows; i++){
+	    			normalCounter += normal.get(i,0)*indexes.get((int)normal.get(i,14),0);
+	    		}
+	        } else {
+	        }
+	    }
+		
+		
+		System.out.println(noPeakCounter + " " + normalCounter );
 	}
 	
 	public static void testBayes(){
