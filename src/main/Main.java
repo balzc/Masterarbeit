@@ -32,18 +32,18 @@ import gp.GP;
 public class Main {
 
 	public static void main(String[] args) {
-//		interpolate();
-//		optimizeParams();
-//		makePriceFile();
-//		makeNoPeakFile();
-//		runSim(args);
-//		runLpSolver();
-//		testEVMDP("/users/balz/documents/workspace/masterarbeit/data/prices2.csv", "/users/balz/documents/workspace/masterarbeit/data/out.csv");
-//		testBayes();
-		peakStatistics();
+		//		interpolate();
+		optimizeParams();
+		//		makePriceFile();
+		//		makeNoPeakFile();
+		//		runSim(args);
+		//		runLpSolver();
+		//		testEVMDP("/users/balz/documents/workspace/masterarbeit/data/prices2.csv", "/users/balz/documents/workspace/masterarbeit/data/out.csv");
+		//		testBayes();
+		//		peakStatistics();
 	}
-	
-	
+
+
 	public static void runSim(String[] args){
 		Simulation s = new Simulation();
 		//s.work(fhprices, fhout, vminvarInput, qminInput, qmaxInput, tstartInput, tcritInput, mqInput, kwhPerUnitInput)
@@ -56,36 +56,36 @@ public class Main {
 	public static void runLpSolver(){
 		LpSolver.doWork();
 	}
-	
+
 	public static void peakStatistics(){
 		String indexesString = "/users/balz/documents/workspace/masterarbeit/data/peakIndexes.csv";
 		String noPeakString = "/users/balz/documents/workspace/masterarbeit/data/peaksNoPeaks/normalPrices/";
 		String normalString = "/users/balz/documents/workspace/masterarbeit/data/peaksNoPeaks/noPeakPrices/";
 		String timestep = "/timestep.csv";
-	    File[] files = new File(normalString).listFiles();
+		File[] files = new File(normalString).listFiles();
 		int noPeakCounter = 0;
 		int normalCounter = 0;
-        DoubleMatrix indexes = FileHandler.csvToMatrix(indexesString);
+		DoubleMatrix indexes = FileHandler.csvToMatrix(indexesString);
 
-	    for (File file : files) {
-	        if (file.isDirectory()) {
-	            System.out.println("Directory: " + file.getName());
-	    		DoubleMatrix noPeak = FileHandler.csvToMatrix(noPeakString+file.getName()+timestep);
-	    		DoubleMatrix normal = FileHandler.csvToMatrix(normalString+file.getName()+timestep);
-	    		for(int i = 0; i < noPeak.rows; i++){
-	    			noPeakCounter += noPeak.get(i,0)*indexes.get((int)noPeak.get(i,14),0);
-	    		}
-	    		for(int i = 0; i < normal.rows; i++){
-	    			normalCounter += normal.get(i,0)*indexes.get((int)normal.get(i,14),0);
-	    		}
-	        } else {
-	        }
-	    }
-		
-		
+		for (File file : files) {
+			if (file.isDirectory()) {
+				System.out.println("Directory: " + file.getName());
+				DoubleMatrix noPeak = FileHandler.csvToMatrix(noPeakString+file.getName()+timestep);
+				DoubleMatrix normal = FileHandler.csvToMatrix(normalString+file.getName()+timestep);
+				for(int i = 0; i < noPeak.rows; i++){
+					noPeakCounter += noPeak.get(i,0)*indexes.get((int)noPeak.get(i,14),0);
+				}
+				for(int i = 0; i < normal.rows; i++){
+					normalCounter += normal.get(i,0)*indexes.get((int)normal.get(i,14),0);
+				}
+			} else {
+			}
+		}
+
+
 		System.out.println(noPeakCounter + " " + normalCounter );
 	}
-	
+
 	public static void testBayes(){
 		DoubleMatrix x = DoubleMatrix.concatVertically((new DoubleMatrix(new double[] {1,1,1,1,1})).transpose(),(new DoubleMatrix(new double[] {1,2,3,4,5})).transpose());
 		DoubleMatrix y = new DoubleMatrix(new double[] {3,5,7,9,11});
@@ -96,8 +96,8 @@ public class Main {
 		bi.setup();
 		printMatrix(bi.getMean());
 	}
-	
-	
+
+
 	public static void testEVMDP(String prices, String out){
 		String fileHandlePrices = prices;//"/users/balz/documents/workspace/masterarbeit/data/prices2.csv";
 
@@ -106,7 +106,7 @@ public class Main {
 		Matern m = new Matern();
 		Multiplicative mult = new Multiplicative(c1, c2);
 		Additive a1 = new Additive(mult, m);
-		
+
 		int noData = 96;
 		double stepsize = 1./96.;
 		double[] dataX = new double[noData];
@@ -117,7 +117,7 @@ public class Main {
 		for(int i=0; i< noData; i++){
 			dataY[i] = 10;
 		}
-	
+
 		double[] dataP = {2,1.5,2,1,1.2,0.2,0.2};//{2,1.5,1,1.2,0.2,0.2}
 		double[] dataTest = new double[noData];// = {11,12,13,14,15,16};
 		for(int i = 0; i < dataTest.length/10; i++){
@@ -157,11 +157,11 @@ public class Main {
 			}
 			DoubleMatrix xTestM = new DoubleMatrix(xTest);
 
-			
-		
+
+
 			DoubleMatrix yTrainMPrices = subVector(initialOffset, initialOffset+steps*trainSetSize, priceSamples);
-//			printMatrix(xTrainM);
-//			printMatrix(xTestM);
+			//			printMatrix(xTrainM);
+			//			printMatrix(xTestM);
 			GP priceGP = new GP(xTrainM,xTestM,P,cf,nl);
 			priceGP.setup(yTrainMPrices);
 			DoubleMatrix predMeanPrices = priceGP.getPredMean().add(20);
@@ -172,7 +172,7 @@ public class Main {
 			// heat according to policy and update cumulative utility
 			int tmp = initialOffset+steps*trainSetSize;
 			for(int o = tmp; o < tmp + steps; o++){
-//				System.out.println(o  + " " + testmdp.priceToState(predMeanPrices.get(o-tmp))+ " " +  currentLoad );
+				//				System.out.println(o  + " " + testmdp.priceToState(predMeanPrices.get(o-tmp))+ " " +  currentLoad );
 				int action = testmdp.getOptPolicy()[o-tmp][testmdp.priceToState(predMeanPrices.get(o-tmp))][testmdp.loadToState(currentLoad)][0];
 				cumulativeU += testmdp.rewards(currentLoad, action, priceSamples.get(o)+20,o,0);
 				currentLoad = testmdp.updateLoad(currentLoad, action);
@@ -216,7 +216,7 @@ public class Main {
 		Matern m = new Matern();
 		Multiplicative mult = new Multiplicative(c1, c2);
 		Additive a1 = new Additive(mult, m);
-		
+
 		int noData =96;
 		double stepsize = 1./96.;
 		double[] dataX = new double[noData];
@@ -227,7 +227,7 @@ public class Main {
 		for(int i=0; i< noData; i++){
 			dataY[i] = 10;
 		}
-	
+
 		double[] dataP = {2,1.5,2,1,1.2,0.2,0.2};//{2,1.5,1,1.2,0.2,0.2}
 		int noTestData = 50;
 		double[] dataTest = new double[noTestData];// = {11,12,13,14,15,16};
@@ -249,12 +249,12 @@ public class Main {
 		printMatrix(testIn);
 		printMatrix(X);
 		printMatrix(gp.getPredVar());
-//		DoubleMatrix trainOut = subVector(0, noData-noTestData, samples);
-//		GP gpnew = new GP(trainIn.dup(), testIn.dup(), P.dup(), cf, nl);
-//		gpnew.setup(trainOut);
-//		FileHandler.matrixToCsv(samples, "/users/balz/documents/workspace/masterarbeit/data/prices2.csv");
+		//		DoubleMatrix trainOut = subVector(0, noData-noTestData, samples);
+		//		GP gpnew = new GP(trainIn.dup(), testIn.dup(), P.dup(), cf, nl);
+		//		gpnew.setup(trainOut);
+		//		FileHandler.matrixToCsv(samples, "/users/balz/documents/workspace/masterarbeit/data/prices2.csv");
 	}
-	
+
 	public static DoubleMatrix subVector(int start, int end, DoubleMatrix vector){
 		DoubleMatrix result = DoubleMatrix.zeros(end-start);
 		for(int i = start; i < end; i++){
@@ -262,7 +262,7 @@ public class Main {
 		}
 		return result;
 	}
-	
+
 	public static void printMatrix(DoubleMatrix m){
 		System.out.print("[");
 		for(int i = 0; i< m.rows; i++){
@@ -274,7 +274,7 @@ public class Main {
 		}
 		System.out.println("]");
 	}
-	
+
 	public static void makeNoPeakFile(){
 		String fileHandlePrices = "/users/balz/documents/workspace/masterarbeit/data/interpolatedPrices.csv";
 		String destination1 = "/users/balz/documents/workspace/masterarbeit/data/noPeakPrices.csv";
@@ -295,7 +295,7 @@ public class Main {
 
 		FileHandler.matrixToCsv(result, destination1);
 	}
-	
+
 	public static void test1(){
 		String fileHandlePrices = "/users/balz/documents/workspace/masterarbeit/data/prices2.csv";
 		String fileHandleTemps = "/users/balz/documents/workspace/masterarbeit/data/temps2.csv";
@@ -305,7 +305,7 @@ public class Main {
 		Matern m = new Matern();
 		Multiplicative mult = new Multiplicative(c1, c2);
 		Additive a1 = new Additive(mult, m);
-		
+
 		int noData = 96;
 		double stepsize = 1./96.;
 		double[] dataX = new double[noData];
@@ -316,7 +316,7 @@ public class Main {
 		for(int i=0; i< noData; i++){
 			dataY[i] = 10;
 		}
-	
+
 		double[] dataP = {2,1.5,2,1,1.2,0.2,0.2};//{2,1.5,1,1.2,0.2,0.2}
 		double[] dataTest = new double[noData];// = {11,12,13,14,15,16};
 		for(int i = 0; i < dataTest.length/10; i++){
@@ -358,15 +358,15 @@ public class Main {
 			}
 			DoubleMatrix xTestM = new DoubleMatrix(xTest);
 
-			
-		
-//			DoubleMatrix yTrainMPrices = subVector(initialOffset, initialOffset+steps*trainSetSize, priceSamples);
-//			DoubleMatrix yTrainMTemps = subVector(initialOffset, initialOffset+steps*trainSetSize, tempSamples);
-//
-//			GP priceGP = new GP(xTrainM,xTestM,P,cf,nl);
-//			priceGP.setup(yTrainMPrices);
-//			GP tempGP = new GP(xTrainM,xTestM,P,cf,nl);
-//			tempGP.setup(yTrainMTemps);
+
+
+			//			DoubleMatrix yTrainMPrices = subVector(initialOffset, initialOffset+steps*trainSetSize, priceSamples);
+			//			DoubleMatrix yTrainMTemps = subVector(initialOffset, initialOffset+steps*trainSetSize, tempSamples);
+			//
+			//			GP priceGP = new GP(xTrainM,xTestM,P,cf,nl);
+			//			priceGP.setup(yTrainMPrices);
+			//			GP tempGP = new GP(xTrainM,xTestM,P,cf,nl);
+			//			tempGP.setup(yTrainMTemps);
 			DoubleMatrix predMeanPrices = priceSimple;//priceGP.getPredMean().add(20);
 			DoubleMatrix predMeanTemps = DoubleMatrix.ones(96).mul(10);//tempGP.getPredMean().add(10);
 			DoubleMatrix predVarPrices = DoubleMatrix.ones(96);
@@ -380,14 +380,14 @@ public class Main {
 				System.out.println(o  + " " + testmdp.priceToState(predMeanPrices.get(o-tmp))+ " " + predMeanTemps.get(o-tmp) + " "+testmdp.internalTempToState(currentTemp) + " " + currentTemp + " " + testmdp.getInternalTemp()[testmdp.internalTempToState(currentTemp)]);
 				int action = testmdp.getOptPolicy()[o-tmp][testmdp.priceToState(predMeanPrices.get(o-tmp))][testmdp.internalTempToState(currentTemp)][testmdp.externalTempToState(predMeanTemps.get(o-tmp))];
 				currentTemp = testmdp.updateInternalTemperature(currentTemp,predMeanTemps.get(o) , action);
-//				if(currentTemp > 24 || currentTemp < 16){
-//					System.out.println("strange temps" +testmdp.rewards(currentTemp, 0, priceSamples.get(o)) +" "+ testmdp.rewards(currentTemp, 1, priceSamples.get(o)));
-//				}
+				//				if(currentTemp > 24 || currentTemp < 16){
+				//					System.out.println("strange temps" +testmdp.rewards(currentTemp, 0, priceSamples.get(o)) +" "+ testmdp.rewards(currentTemp, 1, priceSamples.get(o)));
+				//				}
 				cumulativeU += testmdp.rewards(currentTemp, action, priceSamples.get(o));
 				temperatures[o-steps*trainSetSize] = currentTemp;
 				actions[o-steps*trainSetSize] = action;
 			}
-//			testmdp.printOptPolicy();
+			//			testmdp.printOptPolicy();
 			initialOffset += steps;
 			if(i > 0){
 				predictedPrices = DoubleMatrix.concatVertically(predictedPrices, predMeanPrices);
@@ -417,7 +417,7 @@ public class Main {
 		System.out.println(cumulativeU);
 
 	}
-	
+
 	public static void makePriceFile(){
 		DoubleMatrix result = new DoubleMatrix(0,1);
 		for(int o = 3; o < 6; o++){
@@ -433,7 +433,7 @@ public class Main {
 				}
 			}
 		}
-		
+
 		FileHandler.matrixToCsv(result, "/Users/Balz/Downloads/Outlook/allPrices.csv");
 	}
 
@@ -447,10 +447,10 @@ public class Main {
 		result.put((int)(dm.rows*2-2), dm.get(dm.rows-1,0));
 		FileHandler.matrixToCsv(result, "/users/balz/documents/workspace/masterarbeit/data/interpolatedPrices.csv");
 	}
-	
-	
+
+
 	public static void optimizeParams(){
-	/*	1.4016926456748566
+		/*	1.4016926456748566
 		5.939885027240675
 		10.258330715290294
 		7.814278005934424
@@ -470,12 +470,13 @@ public class Main {
 		double stepSize = 1./numsteps;
 		System.out.println(stepSize);
 		DoubleMatrix predictions = new DoubleMatrix(0,1);
-		int numruns = 10;
+		int numruns = 182;
 		int learnSize = 3*numsteps;
 		int predictSize = numsteps;
-		DoubleMatrix priceData = FileHandler.csvToMatrix("/users/balz/documents/workspace/masterarbeit/data/noPeakPrices.csv");
+		DoubleMatrix priceData = FileHandler.csvToMatrix("/home/user/caflisch/Masterarbeit/data/interpolatedPrices.csv");
 		System.out.println("rows " + priceData.rows);
 		int learnStart = 0;
+		GP gp = new GP(new DoubleMatrix(0,1), new DoubleMatrix(0,1), parameters, cf, gpVar);
 		for(int i = 0; i < numruns; i++){
 			double predictStart = learnStart + learnSize;
 			double[] xTrain = new double[learnSize];
@@ -488,18 +489,14 @@ public class Main {
 				xTest[o] = o*stepSize + predictStart*stepSize;
 			}
 
-					printMatrix(xTrainM);
 			DoubleMatrix xTestM = new DoubleMatrix(xTest);
-					printMatrix(xTestM);
 
-			GP  gp = new GP(xTrainM, xTestM, parameters, cf, gpVar);
+			gp = new GP(xTrainM, xTestM, parameters, cf, gpVar);
 			gp.setup(subVector(learnStart,learnStart+learnSize,priceData));
 			predictions = DoubleMatrix.concatVertically(predictions, gp.getPredMean());
 			learnStart = learnStart  + predictSize;
 		}
-//		printMatrix(gp.getTrainCov());
-		printMatrix(predictions);
-		printMatrix(subVector(learnSize, learnSize + predictSize*numruns, priceData));
+		//		printMatrix(gp.getTrainCov());
 		double startRmse = computeRMSE(predictions,subVector(learnSize, learnSize + predictSize*numruns, priceData));
 		System.out.println("RMSE at Start: " + startRmse);
 
@@ -507,7 +504,7 @@ public class Main {
 		double rhoend = 1.0e-4;
 		int iprint = 0;
 		int maxfun = 100;
-		int numRep = 1;
+		int numRep = 1000;
 		int numVar = 6;//cf.getNumParams();
 		int numConstr = 2*numVar;
 		double upperBound = 10;
@@ -516,47 +513,70 @@ public class Main {
 		double[][] opt = new double[numVar][numVar];
 		double maxLoglikeli = Double.NEGATIVE_INFINITY;
 		double[][] res = null;
-		double currentRMSE = Double.POSITIVE_INFINITY;
+		double currentRMSE = startRmse;
 		DoubleMatrix bestVars = new DoubleMatrix();
-//		for (int r = 0; r<numRep; r++){
-//			for (int i = 0; i<numVar; i++){
-//				startX[i] = priceParameters[i];//Math.random()*upperBound;
-//				
-//			}
-//			if(numVar==8){
-//				startX[6] = Math.random();
-//			}
-//
-//			try {
-//				res =  Cobyla.FindMinimum(gp, numVar, numConstr, startX, rhobeg, rhoend, iprint, maxfun);
-//				if(res[0][0]>maxLoglikeli){
-//					maxLoglikeli = res[0][0];
-//					opt[0][0] = res[0][0];
-//				}
-//
-//				
-//				System.out.println("loglikeli:"+res[0][0]);
-//				for(int i = 0; i<res[1].length; i++){
-//					System.out.println(res[1][i]);
-//				}
-//				GP newGP = new GP(xTrainM,xTestM, new DoubleMatrix(res[1]),cf,gpVar);
-//				newGP.setup(subVector(0,learnSize,priceData));
-//				double rmse = computeRMSE(newGP.getPredMean(),subVector(learnSize, learnSize + predictSize, priceData));
-//				if(rmse < currentRMSE){
-//					currentRMSE = rmse;
-//					bestVars = new DoubleMatrix(res[1]);
-//
-//				}
-//				System.out.println(r + " RMSE: " + currentRMSE + " " + rmse + " " + maxLoglikeli + " " +  res[0][0]);
-//
-//			} catch (Exception e) {
-//				// TODO: handle exception
-//			}
-//
-//		}
-//		printMatrix(bestVars);
+		for (int r = 0; r<numRep; r++){
+			for (int i = 0; i<numVar; i++){
+				startX[i] = Math.random()*upperBound;
 
-		
+			}
+			if(numVar==8){
+				startX[6] = Math.random();
+			}
+
+			try {
+				res =  Cobyla.FindMinimum(gp, numVar, numConstr, startX, rhobeg, rhoend, iprint, maxfun);
+				if(res[0][0]>maxLoglikeli){
+					maxLoglikeli = res[0][0];
+					opt[0][0] = res[0][0];
+					System.out.println("loglikeli:"+res[0][0]);
+				}
+				for(int i = 0; i<res[1].length; i++){
+					System.out.println(res[1][i]);
+				}
+				predictions = new DoubleMatrix(0,1);
+				learnStart = 0;
+				for(int i = 0; i < numruns; i++){
+					double predictStart = learnStart + learnSize;
+					double[] xTrain = new double[learnSize];
+					for(int o = 0; o < learnSize; o++){
+						xTrain[o] = o*stepSize+learnStart*stepSize;
+					}
+					DoubleMatrix xTrainM = new DoubleMatrix(xTrain);
+					double[] xTest = new double[predictSize];
+					for(int o = 0; o < predictSize; o++){
+						xTest[o] = o*stepSize + predictStart*stepSize;
+					}
+
+					DoubleMatrix xTestM = new DoubleMatrix(xTest);
+					DoubleMatrix parame = new DoubleMatrix(res[1]);
+					gp = new GP(xTrainM, xTestM, parame, cf, gpVar);
+					gp.setup(subVector(learnStart,learnStart+learnSize,priceData));
+					predictions = DoubleMatrix.concatVertically(predictions, gp.getPredMean());
+					learnStart = learnStart  + predictSize;
+				}
+
+				double rmse = computeRMSE(predictions,subVector(learnSize, learnSize + predictSize*numruns, priceData));
+
+				if(rmse < currentRMSE){
+					currentRMSE = rmse;
+					bestVars = new DoubleMatrix(res[1]);
+
+				}
+				System.out.println(r + " RMSE: " + currentRMSE + " " + rmse + " " + maxLoglikeli + " " +  res[0][0]);
+
+
+
+
+
+			} catch (Exception e) {
+				e.printStackTrace();
+				// TODO: handle exception
+			}
+
+		}
+		FileHandler.matrixToCsv(bestVars, "/home/user/caflisch/Masterarbeit/data/bestvars.csv");
+
 	}
 	public static double computeRMSE(DoubleMatrix a, DoubleMatrix b){
 		double RMSE = 0.;

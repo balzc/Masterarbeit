@@ -86,7 +86,7 @@ public class EVMDP {
 		this.kwhPerUnit = wattPerUnitInput;
 		// deltat = (tcrit-tplug)/numsteps
 	}
-	public EVMDP( double qSlope, double vMin, double wattPerUnitInput, double[][][] priceprobs, double[][][] loadprobs, double[][][] endstateprobs, double[] prices ,double[] loads, int numsteps,double tstart, double tcrit, double tmean, double qrequired, double qmax) {
+	public EVMDP( double qSlope, double vMin, double wattPerUnitInput, double[][][] priceprobs, double[][][] loadprobs, double[][][] endstateprobs, double[] prices ,double[] loads, int numsteps,double tstart, double tcrit, double tmean, double qrequired, double qmax, double deltaPrice) {
 
 
 	
@@ -105,6 +105,7 @@ public class EVMDP {
 		this.kwhPerUnit = wattPerUnitInput;
 		this.qRequired = qrequired;
 		this.qMax = qmax;
+		this.deltaPrice = deltaPrice;
 		// deltat = (tcrit-tplug)/numsteps
 	}
 	
@@ -135,7 +136,7 @@ public class EVMDP {
 		}
 //		System.out.println("min " + minPrice + " max " + maxPrice);
 //		printPrices();
-
+//		printLoads();
 		solveMDP();
 		if(PROFILING){
 			System.out.println("solve - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
@@ -151,6 +152,8 @@ public class EVMDP {
 //		printOptPolicy();
 	}
 	public void fastSetup(){
+		this.maxPrice = prices[prices.length-1];
+		this.minPrice = prices[0];
 		solveMDP();
 	}
 	
@@ -272,7 +275,7 @@ public class EVMDP {
 		double loadToMax = Math.min((qMax*kwhPerUnit-q),kwhPerUnit);
 		double cost = price * action * loadToMax;
 		if(cost < 0.0001 && action == 1){
-			return -1;
+			cost = -1;
 		}
 //		if(value(q+action * wattPerUnit,t+1) >= value(q,t)){
 		if(endState == 1){
@@ -286,6 +289,26 @@ public class EVMDP {
 //			return 0;
 //		}
 
+	}
+	
+	public double valueWithCustomVFunction(double qin, int t, double vMinTrue, double qSlopeTrue){
+		double q = Math.min(qin, qMax*kwhPerUnit);
+		double requiredLoad = qRequired*kwhPerUnit;
+		double qflex = Math.max((q-requiredLoad), 0);
+		if(q >= qRequired*kwhPerUnit){
+			if(t < tStart){
+				return (vMinTrue + qSlopeTrue*qflex);
+			}
+			else if(t < tCrit){
+				return (vMinTrue + qSlopeTrue*qflex)*((tCrit-t)/(tCrit-tStart));
+			}
+			else{
+				return 0;
+			}
+				
+		} else {
+			return 0;
+		}
 	}
 
 	public double value(double qin, int t){
@@ -327,7 +350,7 @@ public class EVMDP {
 			}
 		}
 		if(index < 0){
-			System.out.println("grave error " + price + " " + maxPrice + " " + minPrice);
+			System.out.println("grave error " + price + " " + maxPrice + " " + minPrice + " p: " + p);
 			printPrices();
 		}
 		return index;
