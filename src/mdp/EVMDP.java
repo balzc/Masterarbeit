@@ -84,6 +84,9 @@ public class EVMDP {
 		this.tSD = tsd;
 		this.qInitial = qinitial;
 		this.kwhPerUnit = wattPerUnitInput;
+//		System.out.println("Normal " + vMin + " " + qSlope);
+		
+		
 		// deltat = (tcrit-tplug)/numsteps
 	}
 	public EVMDP( double qSlope, double vMin, double wattPerUnitInput, double[][][] priceprobs, double[][][] loadprobs, double[][][] endstateprobs, double[] prices ,double[] loads, int numsteps,double tstart, double tcrit, double tmean, double qrequired, double qmax, double deltaPrice) {
@@ -106,6 +109,8 @@ public class EVMDP {
 		this.qRequired = qrequired;
 		this.qMax = qmax;
 		this.deltaPrice = deltaPrice;
+//		System.out.println("Sampled " + vMin + " " + qSlope);
+
 		// deltat = (tcrit-tplug)/numsteps
 	}
 	
@@ -274,9 +279,10 @@ public class EVMDP {
 	public double rewards(double q, int action, double price, int t, int endState){
 		double loadToMax = Math.min((qMax*kwhPerUnit-q),kwhPerUnit);
 		double cost = price * action * loadToMax;
-		if(cost < 0.0001 && action == 1){
-			cost = -1;
-		}
+		
+//		if(cost < 0.0001 && action == 1){
+//			cost = 1;
+//		}
 //		if(value(q+action * wattPerUnit,t+1) >= value(q,t)){
 		if(endState == 1){
 			return value(q,t);
@@ -420,11 +426,11 @@ public class EVMDP {
 					priceProb[i][j][k] /= normsPrice[k][j];
 					//					System.out.println("i=" + i + " ");
 
-					//										System.out.print(priceProb[i][j][k] + " ");
+//															System.out.print(priceProb[i][j][k] + " ");
 				}
-				//								System.out.println();
+//												System.out.println();
 			}
-			//						System.out.println();
+//									System.out.println();
 
 		}
 		//		System.out.println();
@@ -528,20 +534,25 @@ public class EVMDP {
 	public void printOptPolicy(){
 		double sum = 0;
 		for(int t = 0; t <numSteps; t++){
-			System.out.println(t + "  ");
+//			System.out.println(t + "  ");
 
 			for(int p = 0; p < prices.length; p++){
 				for(int it = 0; it < loads.length; it++){
-					System.out.print(prices[p] + " " + loads[it] + " "  + optPolicy[t][p][it][0] + "; ");
+//					System.out.print(prices[p] + " " + loads[it] + " "  + optPolicy[t][p][it][0] + "; ");
+					System.out.print(optPolicy[t][p][it][0] + " " );
+
 //					sum += optPolicy[t][p][it][0];
 
 				}
-				System.out.println();
+//				System.out.println();
 
 			}
 			System.out.println();
 
 		}
+		System.out.println();
+		System.out.println();
+
 //		System.out.println("Sum: " + sum);
 	}
 

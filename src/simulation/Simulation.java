@@ -65,6 +65,7 @@ public class Simulation {
 
 		boolean log = false;
 		String runId = "qmax " + qmax + "  qmin " + qminTrue + " vmin " + vminTrue + " mq " + mqTrue + " kwh " + kwhPerUnitInput + " bisd "+ bisd;
+		if(log)
 		System.out.println("qmax " + qmax + "  qmin " + qminTrue + " vmin " + vminTrue + " mq " + mqTrue + " kwh " + kwhPerUnitInput + " bisd "+ bisd);
 		double vminSD = 1.;// mqsd *qmin
 		double mqSD = 1.;//5
@@ -88,10 +89,10 @@ public class Simulation {
 
 		// Stopping criterion parameters
 		int numberOfSamplesForStoppingCriterion = 1000;
-		int numberOfConcurrentThreads = 10;
+		int numberOfConcurrentThreads = 1;
 		double stoppingCriterionThreshold = 0.00001;
 		// general simulation parameters
-		int numberOfRuns = 365;
+		int numberOfRuns = 1;
 		
 		ArrayList<Double> tdepMeans = new ArrayList<Double>();
 		ArrayList<Double> vminList = new ArrayList<Double>();
@@ -200,6 +201,7 @@ public class Simulation {
 				q = (qmax-qmin)*loadDataQuestions[rndQuestion];
 				double vtrue = vminTrue + (q-qmin)*mqTrue;
 				v = sampleFromNormal(vtrue, vtrueSD);
+
 //				mq = sampleFromNormal(mqTrue, mqSD);
 //				while(mq < 0 ){
 //					mq = sampleFromNormal(mqTrue, mqSD);
@@ -252,6 +254,7 @@ public class Simulation {
 				mqLearned = bi.getMean().get(1);
 				vminLearned =  bi.getMean().get(0)+mqLearned*qmin;
 			}
+			
 			if(log)
 			System.out.println("qmin "+ qmin);
 
@@ -300,6 +303,7 @@ public class Simulation {
 
 			EVMDP mdp = new EVMDP(predMeanPrices, predVarPrices, deltaPrice, numSteps, qmax, qmin, mqLearned, tstart + endOfDayOffset, tcrit + endOfDayOffset, vminLearned,tdepLearnedMean  + endOfDayOffset,tdepLearnedSD,currentLoadMDP,kwhPerUnit);
 			mdp.setup();
+//			mdp.printOptPolicy();
 			// charge the vehicle according to policy and update total utility
 			if(PROFILING){
 				System.out.println("mdp calculation - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
@@ -327,11 +331,16 @@ public class Simulation {
 					// start threads
 					for(int i = 0; i < numberOfConcurrentThreads; i++){
 						double[] sample = mvnd.sample();
-						double sampledVmin = sample[0] + qmin * sample[1];
-						double sampledMQ = sample[1];
+						double sampledVmin = -1;
+						double sampledMQ = -1;
+						while(sampledVmin < 0 || sampledMQ < 0){
+							sample = mvnd.sample();
+							sampledVmin = sample[0] + qmin * sample[1];
+							sampledMQ = sample[1];
+						}
 //						if(log)
 //							System.out.println(i +  " " + mqLearned + " " + vminLearned + " " + sampledVmin + " vmin mq " + sampledMQ + " eu " + expectedUtility + " sample 0 " + sample[0] + " sample 1 " + sample[1] + " bi 0 " + bi.getMean().get(0)+ " bi 1 " + bi.getMean().get(1));
-//						System.out.println(sampledVmin + " " + sampledMQ + " " + vminLearned + " " + mqLearned);
+						System.out.println(sampledVmin + " " + sampledMQ);
 						EVMDP samplemdp = new EVMDP(sampledMQ, sampledVmin, kwhPerUnit, mdp.getPriceProb(), mdp.getLoadProb(), mdp.getEndStateProb(), mdp.getPrices(), mdp.getLoads(), numSteps,tstart + endOfDayOffset, tcrit + endOfDayOffset,tdepLearnedMean  + endOfDayOffset, qmin, qmax,deltaPrice);
 
 
@@ -363,12 +372,12 @@ public class Simulation {
 
 					}
 				}
-				double avgRegret = Math.abs(cumulatedDifference/numberOfSamplesForStoppingCriterion);
+				double avgRegret = cumulatedDifference/numberOfSamplesForStoppingCriterion;
 //				if(log)
-//					System.out.println(avgRegret + " " +vminLearned);
-				if(avgRegret < stoppingCriterionThreshold){
-					notLearning = true;
-				}
+					System.out.println(avgRegret + " " +vminLearned + " " + mqLearned);
+//				if(avgRegret < stoppingCriterionThreshold){
+//					notLearning = true;
+//				}
 				regret.add(avgRegret);
 				mqDiffs.add(mq-mqLearned);
 				vminDiffs.add(vminTrue-vminLearned);
@@ -566,9 +575,9 @@ public class Simulation {
 		FileHandler.safeDailyReport(dailyReport, fileHandleOut  + fileName + "/daily.csv");
 		FileHandler.safeTimeStepReport(timeStepReport, fileHandleOut + fileName + "/timestep.csv");
 		FileHandler.safeStoppingReport(stoppingReport, fileHandleOut + fileName + "/stopping.csv");
-		if(!PROFILING){
-			System.out.println("Total - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s " + runId);
-		}		
+//		if(!PROFILING){
+//			System.out.println("Total - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s " + runId);
+//		}		
 		String append = vminvarInput + "," + mqInput + "," + kwhPerUnit + "," + tstartTrue + "," + tcritTrue + "," +qmaxInput + "," + (int)(qminInput) + "," + bayesInfVar+",";
 		String totalCosts = sum(costsDailyMDP)+ ","+ sum(costsDailyLPL)+","+ sum(costsDailyPAFL) +","+ sum(costsDailySML)+ ",";
 		String totalLoads = sum(loadsDailyMDP) + "," +sum(loadsDailyLPL) + "," +sum(loadsDailyPAFL) + "," +sum(loadsDailySML) + "," ;
@@ -619,21 +628,23 @@ public class Simulation {
 		}
 	}
 
-	public double averageOverQvalues(double[][][][] qvals){
+	public double averageOverQvalues(double[][][][] qvals, int j){
 		double result = 0;
 		for(int i = 0; i < qvals[0].length; i++){
-			for(int j = 0; j < qvals[0][i].length; j++){
+//			for(int j = 0; j < qvals[0][i].length; j++){
 				result += qvals[0][i][j][0];
-			}
+//			}
 		}
-		return result/(qvals[0].length*qvals[0][0].length);
+		return result/(qvals[0].length);//*qvals[0][0].length);
 	}
 	
 	public int getNextPriceIndex(double[][][] priceProbs, int j, int k){
 		double rnd = Random.nextDouble();
 		double summedProb = 0;
+		
 		for(int i = 0; i < priceProbs.length; i++){
 			if(rnd > summedProb && rnd <= (summedProb + priceProbs[i][j][k])){
+//				System.out.println(i + " " + priceProbs[i][j][k]);
 				return i;
 			} else {
 				summedProb += priceProbs[i][j][k];
@@ -665,35 +676,84 @@ public class Simulation {
 		public void run() {
 			// TODO Auto-generated method stub
 			mdp.fastSetup();
-			double expectedSampleUtility = averageOverQvalues(mdp.getqValues());
-			int rnd = Random.nextInt(mdp.getPrices().length-1);
-			double utilityWithBasePolicy = 0;
-//			int action = optPolicy[0][rnd][mdp.loadToState(load)][0];
+			int numruns = 100;
+			double expectedSampleUtility = 0;//averageOverQvalues(mdp.getqValues(),mdp.loadToState(load));
+			double expectedBaseUtility = 0;
+			double initialLoad = load;
+			double basePLoad = load;
+			double otherLoad = load;
+//			mdp.printOptPolicy();
+//			System.out.println("tdep " + tdep);
+			for(int j = 0; j < numruns; j++){
+				double cost = 0;
+
+				int rnd = Random.nextInt(mdp.getPrices().length-1); //verify
+				double utilityWithBasePolicy = 0;
+				int action = optPolicy[0][rnd][mdp.loadToState(basePLoad)][0];
+				basePLoad = mdp.updateLoad(basePLoad, action);
+				utilityWithBasePolicy += mdp.rewards(basePLoad, action,mdp.getPrices()[rnd] ,0,0);
+				
+				double utilityWithSampledPolicy = 0;
+				int otherAction = mdp.getOptPolicy()[0][rnd][mdp.loadToState(otherLoad)][0];
+				otherLoad = mdp.updateLoad(otherLoad, otherAction);
+				utilityWithSampledPolicy += mdp.rewards(otherLoad, otherAction,mdp.getPrices()[rnd] ,0,0);
+				
+				
+				cost += mdp.getPrices()[rnd]*action;
+
+				int nextPrice = getNextPriceIndex(mdp.getPriceProb(),rnd,0);
+				for(int i = 1; i < tdep; i++){
+					
+					action = optPolicy[i][nextPrice][mdp.loadToState(basePLoad)][0];
+					basePLoad = mdp.updateLoad(basePLoad, action);
+					utilityWithBasePolicy += mdp.rewards(basePLoad, action,mdp.getPrices()[nextPrice] ,i,0);
+//					System.out.println("cost base " + mdp.rewards(basePLoad, action,mdp.getPrices()[nextPrice] ,i,0) + " " +mdp.getPrices()[nextPrice] + " " + action + " " + basePLoad);
+					
+					otherAction = mdp.getOptPolicy()[i][nextPrice][mdp.loadToState(otherLoad)][0];
+					otherLoad = mdp.updateLoad(otherLoad, otherAction);
+					utilityWithSampledPolicy += mdp.rewards(otherLoad, otherAction,mdp.getPrices()[nextPrice] ,i,0);
+//					System.out.println("cost sampled " + mdp.rewards(otherLoad, otherAction,mdp.getPrices()[nextPrice] ,i,0) + " " +mdp.getPrices()[nextPrice]+ " " + action + " " + otherLoad);
+//					if(action != otherAction)
+//						System.out.println("action " + action + " " + otherAction);
+					cost += mdp.getPrices()[nextPrice]*action;
+
+					nextPrice = getNextPriceIndex(mdp.getPriceProb(),nextPrice,i);
+				}
+//				if(utilityWithBasePolicy != utilityWithSampledPolicy){
+//					System.out.println("ub,us,c " + utilityWithBasePolicy + " " + utilityWithSampledPolicy + " " + cost);
+//				}
+				utilityWithSampledPolicy +=  mdp.rewards(otherLoad, action,0 ,(int)tdep,1);
+
+				utilityWithBasePolicy += mdp.rewards(basePLoad, action,0 ,(int)tdep,1);
+				
+//				if(utilityWithBasePolicy != utilityWithSampledPolicy){
+//					System.out.println("utils " + utilityWithBasePolicy + " " + utilityWithSampledPolicy);
+//				}
+				expectedBaseUtility += utilityWithBasePolicy;
+				expectedSampleUtility += utilityWithSampledPolicy;
+//				if(otherLoad != basePLoad)
+//				System.out.println("loads " + otherLoad + " " + basePLoad);
+				basePLoad = initialLoad;
+				otherLoad = initialLoad;
+//				System.out.println();
+
+			}
+			expectedBaseUtility /= numruns;
+			expectedSampleUtility /= numruns;
+			//			
+			
+//			int action = optPolicy[0][mdp.priceToState(prices.get(0,0))][mdp.loadToState(load)][0];
 //			load = mdp.updateLoad(load, action);
 //			utilityWithBasePolicy += mdp.rewards(load, action,mdp.getPrices()[rnd] ,0,0);
-//			int nextPrice = getNextPriceIndex(mdp.getPriceProb(),rnd,0);
 //			for(int i = 1; i < tdep; i++){
 ////				System.out.println(action + " " + load);
-//				action = optPolicy[i][nextPrice][mdp.loadToState(load)][0];
+//				action = optPolicy[i][mdp.priceToState(prices.get(i,0))][mdp.loadToState(load)][0];
 //				load = mdp.updateLoad(load, action);
-//				utilityWithBasePolicy += mdp.rewards(load, action,nextPrice ,i,0);
-//				nextPrice = getNextPriceIndex(mdp.getPriceProb(),nextPrice,i);
+//				utilityWithBasePolicy += mdp.rewards(load, action,prices.get(i,0) ,i,0);
 //			}
-//			
 			
-			int action = optPolicy[0][mdp.priceToState(prices.get(0,0))][mdp.loadToState(load)][0];
-			load = mdp.updateLoad(load, action);
-			utilityWithBasePolicy += mdp.rewards(load, action,mdp.getPrices()[rnd] ,0,0);
-			for(int i = 1; i < tdep; i++){
-//				System.out.println(action + " " + load);
-				action = optPolicy[i][mdp.priceToState(prices.get(i,0))][mdp.loadToState(load)][0];
-				load = mdp.updateLoad(load, action);
-				utilityWithBasePolicy += mdp.rewards(load, action,prices.get(i,0) ,i,0);
-			}
-			
-			utilityWithBasePolicy += mdp.rewards(load, action,0 ,(int)tdep,1);
-			value = expectedSampleUtility - utilityWithBasePolicy;
-			System.out.println(expectedSampleUtility + " " + utilityWithBasePolicy);
+			value = expectedSampleUtility - expectedBaseUtility;
+//			System.out.println(expectedSampleUtility + " " + expectedBaseUtility);
 
 
 		}

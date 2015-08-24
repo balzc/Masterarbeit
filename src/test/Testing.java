@@ -29,7 +29,7 @@ public class Testing {
 		Simulation s = new Simulation();
 		//s.work(fhprices, fhout, vminvarInput, qminInput, qmaxInput, tstartInput, tcritInput, mqInput, kwhPerUnitInput, bisd)
 
-		s.work("/users/balz/documents/workspace/masterarbeit/data/interpolatedPrices.csv","/users/balz/documents/workspace/masterarbeit/data/","/users/balz/documents/workspace/masterarbeit/data/comp.csv", 20.,33,60.,28.,1.,13.,6,0.5);
+		s.work("/users/balz/documents/workspace/data/interpolatedPrices.csv","/users/balz/documents/workspace/data/","/users/balz/documents/workspace/data/comp.csv", 20.,33,60.,28.,1.,13.,6,50000);
 //		s.work("/users/balz/documents/workspace/masterarbeit/data/interpolatedPrices.csv","/users/balz/documents/workspace/masterarbeit/data/","/users/balz/documents/workspace/masterarbeit/data/comp.csv", 27.,33,6.,28.,1.,13.,0.75,0.5);
 
 	}
