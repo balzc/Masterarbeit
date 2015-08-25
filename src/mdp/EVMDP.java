@@ -652,6 +652,22 @@ public void setEndStateProb(double[][][] endStateProb) {
 	this.endStateProb = endStateProb;
 }
 
+public double getqSlope() {
+	return qSlope;
+}
+
+public void setqSlope(double qSlope) {
+	this.qSlope = qSlope;
+}
+
+public double getvMin() {
+	return vMin;
+}
+
+public void setvMin(double vMin) {
+	this.vMin = vMin;
+}
+
 
 
 

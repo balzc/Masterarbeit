@@ -39,7 +39,7 @@ public class Main {
 		//		runSim(args);
 		//		runLpSolver();
 		//		testEVMDP("/users/balz/documents/workspace/masterarbeit/data/prices2.csv", "/users/balz/documents/workspace/masterarbeit/data/out.csv");
-		//		testBayes();
+				testBayes();
 		//		peakStatistics();
 	}
 
@@ -87,14 +87,14 @@ public class Main {
 	}
 
 	public static void testBayes(){
-		DoubleMatrix x = DoubleMatrix.concatVertically((new DoubleMatrix(new double[] {1,1,1,1,1})).transpose(),(new DoubleMatrix(new double[] {1,2,3,4,5})).transpose());
-		DoubleMatrix y = new DoubleMatrix(new double[] {3,5,7,9,11});
-		double var = 0.05;
-		printMatrix(x);
-		printMatrix(y);
-		BayesInf bi = new BayesInf(x, y, var);
-		bi.setup();
-		printMatrix(bi.getMean());
+//		DoubleMatrix x = DoubleMatrix.concatVertically((new DoubleMatrix(new double[] {1,1,1,1,1})).transpose(),(new DoubleMatrix(new double[] {1,2,3,4,5})).transpose());
+//		DoubleMatrix y = new DoubleMatrix(new double[] {3,5,7,9,11});
+//		double var = 0.05;
+//		printMatrix(x);
+//		printMatrix(y);
+//		BayesInf bi = new BayesInf(x, y, var);
+//		bi.setup();
+//		printMatrix(bi.getMean());
 	}
 
 

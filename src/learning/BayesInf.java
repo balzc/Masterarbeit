@@ -19,26 +19,30 @@ public class BayesInf {
 	private DoubleMatrix mean;
 	private DoubleMatrix covar;
 	private DoubleMatrix priorCovar;
-
-	private double var;
+	private DoubleMatrix priorMean;
+	private double noiseVar;
 	
-	public BayesInf(DoubleMatrix x, DoubleMatrix y, double var){
+	public BayesInf(DoubleMatrix x, DoubleMatrix y, DoubleMatrix priorcovar, DoubleMatrix priormean, double var){
 		this.x = x;
 		this.y = y;
-		this.var = var;
+		this.priorCovar = priorcovar;
+		this.noiseVar = var;
+		this.priorMean = priormean;
 	
 	}
 	public void setup(){
 //		System.out.println("setup");
 //		Main.printMatrix(x);
 //		Main.printMatrix(y);
-		priorCovar = DoubleMatrix.eye(x.rows).mul(var);
 		DoubleMatrix E = DoubleMatrix.eye(x.rows);
 		DoubleMatrix priorCovarInv = Solve.solvePositive(priorCovar, E);
-		a = x.mmul(x.transpose()).mul(1/var).add(priorCovarInv);
+		
+		
+		a = x.mmul(x.transpose()).mul(1/noiseVar).add(priorCovarInv);
 		aInv = Solve.solvePositive(a, E);
-		mean = aInv.mmul(x).mmul(y).mul(1/var);
-
+		DoubleMatrix sum = x.mmul(y).mul(1/noiseVar).add(priorCovarInv.mmul(priorMean));
+		mean = aInv.mmul(sum);
+//		Main.printMatrix(aInv);
 		covar = aInv;
 		
 	}
