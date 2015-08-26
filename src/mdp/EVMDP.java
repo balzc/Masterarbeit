@@ -192,7 +192,12 @@ public class EVMDP {
 
 		double y1 = prices[i] - 0.5*deltaPrice;
 		double y2 = prices[i] + 0.5*deltaPrice;
-		return 0.5*(Erf.erf( (y1-m)/(Math.sqrt(2)*s), (y2-m)/(Math.sqrt(2)*s)) );
+		double result = 0.5*(Erf.erf( (y1-m)/(Math.sqrt(2)*s), (y2-m)/(Math.sqrt(2)*s)) );
+//		if(Double.isNaN(result)){
+//			System.out.println(i + " " + j + " " + k);
+//			System.out.println(prices[j]+ " " + prices[i] + " " + predMeanPrice.get(k) + " " + predCovPrice.get(k,k-1) + " " + predCovPrice.get(k-1,k-1) + " " + predMeanPrice.get(k-1) + " " + predCovPrice.get(k,k));
+//		}
+		return result;
 //				if(prices[i] == 20 && (k < 3 ) ){
 //					return 1;
 //				}else if(prices[i] == 30 && (k < 6 && k > 2) ){
@@ -415,7 +420,7 @@ public class EVMDP {
 				}
 			}
 		}
-		//normalize externalTempProb
+		//normalize priceProb
 		for (int k = 0; k<numSteps-1; k++){
 			//			System.out.print("k= " +k + " ");
 
@@ -423,7 +428,15 @@ public class EVMDP {
 				//				System.out.print("j= "+j + " ");
 
 				for (int i = 0; i<prices.length; i++){
-					priceProb[i][j][k] /= normsPrice[k][j];
+					if(normsPrice[k][j] == 0.0){
+						priceProb[i][j][k] = 1./prices.length;
+//						System.out.println("cheeky " + prices.length + " " + priceProb[i][j][k]);
+					} else{
+						priceProb[i][j][k] /= normsPrice[k][j];
+					}
+//					if(Double.isNaN(priceProb[i][j][k])){
+//						System.out.println("nandos " + normsPrice[k][j]);
+//					}
 					//					System.out.println("i=" + i + " ");
 
 //															System.out.print(priceProb[i][j][k] + " ");
@@ -589,6 +602,17 @@ public void printLoads(){
 
 }
 
+public void printPriceProbs(){
+	for(int i = 0; i < priceProb.length; i++){
+		for(int j = 0; j < priceProb[i].length; j++){
+			for(int o = 0; o < priceProb[i][j].length; o++){
+				System.out.print(priceProb[i][j][o] + " ");
+			}
+			System.out.println();
+		}
+		System.out.println();
+	}
+}
 
 
 
