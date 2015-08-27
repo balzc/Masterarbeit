@@ -84,7 +84,7 @@ public class EVMDP {
 		this.tSD = tsd;
 		this.qInitial = qinitial;
 		this.kwhPerUnit = wattPerUnitInput;
-//		System.out.println("Normal " + vMin + " " + qSlope);
+//		System.out.println("Normal " + tStart + " " + tCrit);
 		
 		
 		// deltat = (tcrit-tplug)/numsteps
@@ -109,7 +109,7 @@ public class EVMDP {
 		this.qRequired = qrequired;
 		this.qMax = qmax;
 		this.deltaPrice = deltaPrice;
-//		System.out.println("Sampled " + vMin + " " + qSlope);
+//		System.out.println("Sampled " + tStart + " " + tCrit);
 
 		// deltat = (tcrit-tplug)/numsteps
 	}
@@ -179,6 +179,7 @@ public class EVMDP {
 //				return 0;
 //			}
 			return 0.5*(1 + Erf.erf(((t+0.5)-tMean)/(tSD * Math.sqrt(2))))-0.5*(1 + Erf.erf(((t-0.5)-tMean)/(tSD * Math.sqrt(2))));
+			
 		} else {
 			return 0;
 		}
@@ -570,6 +571,7 @@ public class EVMDP {
 	}
 
 public void printQvals(){
+	System.out.println(tMean +" " + rewards(60, 0, 20,(int) tMean, 1) + " " + tCrit + " " + tStart);
 	for(int t = 0; t <numSteps; t++){
 		for(int p = 0; p < prices.length; p++){
 			for(int it = 0; it < loads.length; it++){
@@ -614,7 +616,17 @@ public void printPriceProbs(){
 	}
 }
 
-
+public void printEndStateProbs(){
+	for(int i = 0; i < endStateProb.length; i++){
+		for(int j = 0; j < endStateProb[i].length; j++){
+			for(int o = 0; o < endStateProb[i][j].length; o++){
+				System.out.print(o + ": " + endStateProb[i][j][o] + " ");
+			}
+			System.out.println();
+		}
+		System.out.println();
+	}
+}
 
 
 

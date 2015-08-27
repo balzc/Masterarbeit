@@ -37,9 +37,9 @@ public class BayesInf {
 		DoubleMatrix E = DoubleMatrix.eye(x.rows);
 		DoubleMatrix priorCovarInv = Solve.solvePositive(priorCovar, E);
 		
-		
 		a = x.mmul(x.transpose()).mul(1/noiseVar).add(priorCovarInv);
 		aInv = Solve.solvePositive(a, E);
+		
 		DoubleMatrix sum = x.mmul(y).mul(1/noiseVar).add(priorCovarInv.mmul(priorMean));
 		mean = aInv.mmul(sum);
 //		Main.printMatrix(aInv);
