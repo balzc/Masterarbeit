@@ -68,8 +68,8 @@ public class Simulation {
 		String runId = "qmax " + qmax + "  qmin " + qminTrue + " vmin " + vminTrue + " mq " + mqTrue + " kwh " + kwhPerUnitInput + " bisd "+ bisd;
 		if(log)
 		System.out.println("qmax " + qmax + "  qmin " + qminTrue + " vmin " + vminTrue + " mq " + mqTrue + " kwh " + kwhPerUnitInput + " bisd "+ bisd);
-		double vminSD = 0.1;// mqsd *qmin
-		double mqSD = 0.1;//5
+		double vminSD = 1;// mqsd *qmin
+		double mqSD = 1;//5
 		double tdepTrueSD = 0.000000005;//15 min
 		double bayesInfVar = bisd;
 		double vtrueSD = 0.5;
@@ -103,7 +103,7 @@ public class Simulation {
 //		System.out.println(mqTrue + " " + vminTrue);
 		
 		// Stopping criterion parameters
-		int numberOfSamplesForStoppingCriterion = 100;
+		int numberOfSamplesForStoppingCriterion = 1000;
 		int numberOfConcurrentThreads = 10;
 		double stoppingCriterionThreshold = 0.00001;
 		// general simulation parameters
@@ -409,13 +409,13 @@ public class Simulation {
 //				if(log)
 //				System.out.println(vminLearned + " " + mqLearned);
 
-//					System.out.println("Rugrat " + avgRegret + " " +vminLearned + " " + mqLearned);
+					System.out.println( avgRegret + " " +vminLearned + " " + mqLearned);
 //				if(avgRegret < stoppingCriterionThreshold){
 //					notLearning = true;
 //				}
 				regret.add(avgRegret);
-				mqDiffs.add(mq-mqLearned);
-				vminDiffs.add(vminTrue-vminLearned);
+				mqDiffs.add(mqLearned);
+				vminDiffs.add(vminLearned);
 			}
 			if(PROFILING){
 				System.out.println("stopping criterion - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
@@ -606,7 +606,7 @@ public class Simulation {
 
 		String fileName = "vmin" + (int)vminvarInput + "mq" + (int)mqInput + "kwh" + (int)kwhPerUnit + "tstart" + (int)tstartTrue + "tcrit" + (int)tcritInput + "qmax" +(int)qmaxInput + "qmin" + (int)(qminInput) + "bivar" +(int)(bayesInfVar) ;
 		new File(fileHandleOut + fileName).mkdir();
-		FileHandler.safeDailyReport(dailyReport, fileHandleOut  + fileName + "/daily.csv");
+		FileHandler.safeDailyReport(dailyReport, fileHandleOut  + fileName + "/daily.csv",vminTrue, mqTrue);
 		FileHandler.safeTimeStepReport(timeStepReport, fileHandleOut + fileName + "/timestep.csv");
 		FileHandler.safeStoppingReport(stoppingReport, fileHandleOut + fileName + "/stopping.csv");
 //		if(!PROFILING){
@@ -780,8 +780,8 @@ public class Simulation {
 //					System.out.println(actionstring);
 //					System.out.println("base " + basePLoad + " " + otherLoad + " " + utilityWithBasePolicy + " " + utilityWithSampledPolicy);
 //					System.out.println("valas " + mdp.getvMin() + " " + mdp.getqSlope());
-//					mdp.printEndStateProbs();
-//					mdp.printQvals();
+////					mdp.printEndStateProbs();
+////					mdp.printQvals();
 //
 //				}
 //				else if(utilityWithBasePolicy < utilityWithSampledPolicy){

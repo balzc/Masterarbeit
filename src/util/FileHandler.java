@@ -35,13 +35,14 @@ public class FileHandler {
 		}
 	}
 	
-	public static void safeDailyReport(DoubleMatrix m, String destination){
+	public static void safeDailyReport(DoubleMatrix m, String destination, double vmintrue, double mqtrue){
 		try
 		{		
 			FileWriter writer = new FileWriter(destination);
 			writer.append("Daily Utilities,,,,");
 			writer.append("Daily Costs,,,,");
 			writer.append("Daily Loads,,,,");
+			writer.append("vmin," + vmintrue + ",mq," + mqtrue);
 			writer.append('\n');
 			writer.append("MDP,LPL,PAFL,SML,");
 			writer.append("MDP,LPL,PAFL,SML,");
