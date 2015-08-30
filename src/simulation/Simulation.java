@@ -68,8 +68,8 @@ public class Simulation {
 		String runId = "qmax " + qmax + "  qmin " + qminTrue + " vmin " + vminTrue + " mq " + mqTrue + " kwh " + kwhPerUnitInput + " bisd "+ bisd;
 		if(log)
 		System.out.println("qmax " + qmax + "  qmin " + qminTrue + " vmin " + vminTrue + " mq " + mqTrue + " kwh " + kwhPerUnitInput + " bisd "+ bisd);
-		double vminSD = 1;// mqsd *qmin
-		double mqSD = 1;//5
+		double vminSD = 10;// mqsd *qmin
+		double mqSD = 10;//5
 		double tdepTrueSD = 0.000000005;//15 min
 		double bayesInfVar = bisd;
 		double vtrueSD = 0.5;
@@ -103,9 +103,9 @@ public class Simulation {
 //		System.out.println(mqTrue + " " + vminTrue);
 		
 		// Stopping criterion parameters
-		int numberOfSamplesForStoppingCriterion = 1000;
+		int numberOfSamplesForStoppingCriterion = 100;
 		int numberOfConcurrentThreads = 10;
-		double stoppingCriterionThreshold = 0.00001;
+		double stoppingCriterionThreshold = 0.5;
 		// general simulation parameters
 		int numberOfRuns = 365;
 		
@@ -130,7 +130,7 @@ public class Simulation {
 		String fileHandlePrices = fhprices;//"/users/balz/documents/workspace/masterarbeit/data/prices2.csv";
 		DoubleMatrix priceSamples = FileHandler.csvToMatrix(fileHandlePrices);
 
-		double[] priceParameters = {1.0368523093853659,5.9031209989290048,1.0368523093853659,.3466674176616187,3.5551018122094575,8.1097474657929007};
+		double[] priceParameters = {4.198361329912527,9.879118239158018,7.237931221041399,0.7859433255018939,9.056729524350933,0.5142911142105695};
 		SquaredExponential c1 = new SquaredExponential();
 		Periodic c2 = new Periodic();
 		OrnsteinUhlenbeck ou = new OrnsteinUhlenbeck();
@@ -140,7 +140,7 @@ public class Simulation {
 		double gpVar = 0.5;
 		DoubleMatrix parameters = new DoubleMatrix(priceParameters);
 		int learnStart = 17472;//17472; // start after half a year
-		int learnSize = 96;
+		int learnSize = 3*96;
 		int predictStart = learnStart + learnSize;
 		int predictSize = 96;
 		int dataPointsPerDay = 96;
@@ -408,8 +408,15 @@ public class Simulation {
 				double avgRegret = cumulatedDifference/numberOfSamplesForStoppingCriterion;
 //				if(log)
 //				System.out.println(vminLearned + " " + mqLearned);
-
-					System.out.println( avgRegret + " " +vminLearned + " " + mqLearned);
+//				int avgWindow = 10;
+//				double avg = 0;
+//				if(counter >= avgWindow){
+//					for(int i = regret.size()-avgWindow; i < regret.size(); i++){
+//						avg += regret.get(i);
+//					}
+//					avg /= avgWindow;
+//				}
+					System.out.println( avgRegret + " " +vminLearned + " " + mqLearned +" "+ counter);
 //				if(avgRegret < stoppingCriterionThreshold){
 //					notLearning = true;
 //				}

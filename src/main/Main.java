@@ -33,13 +33,13 @@ public class Main {
 
 	public static void main(String[] args) {
 		//		interpolate();
-		optimizeParams();
+//		optimizeParams();
 		//		makePriceFile();
 		//		makeNoPeakFile();
-		//		runSim(args);
+				runSim(args);
 		//		runLpSolver();
 		//		testEVMDP("/users/balz/documents/workspace/masterarbeit/data/prices2.csv", "/users/balz/documents/workspace/masterarbeit/data/out.csv");
-				testBayes();
+//				testBayes();
 		//		peakStatistics();
 	}
 
@@ -457,7 +457,10 @@ public class Main {
 		11.71818393993244
 		0.8228888605895213
 		0.8228888605895213 */
-		double[] priceParameters = {1.0368523093853659,5.9031209989290048,1.0368523093853659,.3466674176616187,3.5551018122094575,8.1097474657929007};//{SE1,SE2,P1,OU1,OU2}1.0368523093853659, 5.9031209989290048, .3466674176616187, 3.5551018122094575, 8.1097474657929007, .49489818206999125, 0.049489818206999125};
+		// {1.0368523093853659,5.9031209989290048,1.0368523093853659,.3466674176616187,3.5551018122094575,8.1097474657929007} 6.990613491143922
+		//{4.198361329912527,9.879118239158018,7.237931221041399,0.7859433255018939,9.056729524350933,0.5142911142105695}5.770412292775187
+		// {2.616588288484559,8.58815296462537,7.918211943572866,0.7131848981125929,6.162092449198834,0.3435202245377685}
+		double[] priceParameters ={1.0368523093853659,5.9031209989290048,1.0368523093853659,.3466674176616187,3.5551018122094575,8.1097474657929007} ;//{SE1,SE2,P1,OU1,OU2}1.0368523093853659, 5.9031209989290048, .3466674176616187, 3.5551018122094575, 8.1097474657929007, .49489818206999125, 0.049489818206999125};
 		SquaredExponential c1 = new SquaredExponential();
 		Periodic c2 = new Periodic();
 		OrnsteinUhlenbeck m = new OrnsteinUhlenbeck();
@@ -473,7 +476,7 @@ public class Main {
 		int numruns = 182;
 		int learnSize = 3*numsteps;
 		int predictSize = numsteps;
-		DoubleMatrix priceData = FileHandler.csvToMatrix("/home/user/caflisch/Masterarbeit/data/interpolatedPrices.csv");
+		DoubleMatrix priceData = FileHandler.csvToMatrix("/users/balz/documents/workspace/data/interpolatedPrices.csv");
 		System.out.println("rows " + priceData.rows);
 		int learnStart = 0;
 		GP gp = new GP(new DoubleMatrix(0,1), new DoubleMatrix(0,1), parameters, cf, gpVar);
@@ -499,83 +502,84 @@ public class Main {
 		//		printMatrix(gp.getTrainCov());
 		double startRmse = computeRMSE(predictions,subVector(learnSize, learnSize + predictSize*numruns, priceData));
 		System.out.println("RMSE at Start: " + startRmse);
-
-		double rhobeg = .5;
-		double rhoend = 1.0e-4;
-		int iprint = 0;
-		int maxfun = 100;
-		int numRep = 1000;
-		int numVar = 6;//cf.getNumParams();
-		int numConstr = 2*numVar;
-		double upperBound = 10;
-		double[] startX = new double[numVar];
-
-		double[][] opt = new double[numVar][numVar];
-		double maxLoglikeli = Double.NEGATIVE_INFINITY;
-		double[][] res = null;
-		double currentRMSE = startRmse;
-		DoubleMatrix bestVars = new DoubleMatrix();
-		for (int r = 0; r<numRep; r++){
-			for (int i = 0; i<numVar; i++){
-				startX[i] = Math.random()*upperBound;
-
-			}
-			if(numVar==8){
-				startX[6] = Math.random();
-			}
-
-			try {
-				res =  Cobyla.FindMinimum(gp, numVar, numConstr, startX, rhobeg, rhoend, iprint, maxfun);
-				if(res[0][0]>maxLoglikeli){
-					maxLoglikeli = res[0][0];
-					opt[0][0] = res[0][0];
-					System.out.println("loglikeli:"+res[0][0]);
-				}
-				for(int i = 0; i<res[1].length; i++){
-					System.out.println(res[1][i]);
-				}
-				predictions = new DoubleMatrix(0,1);
-				learnStart = 0;
-				for(int i = 0; i < numruns; i++){
-					double predictStart = learnStart + learnSize;
-					double[] xTrain = new double[learnSize];
-					for(int o = 0; o < learnSize; o++){
-						xTrain[o] = o*stepSize+learnStart*stepSize;
-					}
-					DoubleMatrix xTrainM = new DoubleMatrix(xTrain);
-					double[] xTest = new double[predictSize];
-					for(int o = 0; o < predictSize; o++){
-						xTest[o] = o*stepSize + predictStart*stepSize;
-					}
-
-					DoubleMatrix xTestM = new DoubleMatrix(xTest);
-					DoubleMatrix parame = new DoubleMatrix(res[1]);
-					gp = new GP(xTrainM, xTestM, parame, cf, gpVar);
-					gp.setup(subVector(learnStart,learnStart+learnSize,priceData));
-					predictions = DoubleMatrix.concatVertically(predictions, gp.getPredMean());
-					learnStart = learnStart  + predictSize;
-				}
-
-				double rmse = computeRMSE(predictions,subVector(learnSize, learnSize + predictSize*numruns, priceData));
-
-				if(rmse < currentRMSE){
-					currentRMSE = rmse;
-					bestVars = new DoubleMatrix(res[1]);
-
-				}
-				System.out.println(r + " RMSE: " + currentRMSE + " " + rmse + " " + maxLoglikeli + " " +  res[0][0]);
-
-
-
-
-
-			} catch (Exception e) {
-				e.printStackTrace();
-				// TODO: handle exception
-			}
-
-		}
-		FileHandler.matrixToCsv(bestVars, "/home/user/caflisch/Masterarbeit/data/bestvars.csv");
+		printMatrix(predictions);
+		printMatrix(subVector(learnSize, learnSize + predictSize*numruns, priceData));
+//		double rhobeg = .5;
+//		double rhoend = 1.0e-4;
+//		int iprint = 0;
+//		int maxfun = 100;
+//		int numRep = 1000;
+//		int numVar = 6;//cf.getNumParams();
+//		int numConstr = 2*numVar;
+//		double upperBound = 10;
+//		double[] startX = new double[numVar];
+//
+//		double[][] opt = new double[numVar][numVar];
+//		double maxLoglikeli = Double.NEGATIVE_INFINITY;
+//		double[][] res = null;
+//		double currentRMSE = startRmse;
+//		DoubleMatrix bestVars = new DoubleMatrix();
+//		for (int r = 0; r<numRep; r++){
+//			for (int i = 0; i<numVar; i++){
+//				startX[i] = Math.random()*upperBound;
+//
+//			}
+//			if(numVar==8){
+//				startX[6] = Math.random();
+//			}
+//
+//			try {
+//				res =  Cobyla.FindMinimum(gp, numVar, numConstr, startX, rhobeg, rhoend, iprint, maxfun);
+//				if(res[0][0]>maxLoglikeli){
+//					maxLoglikeli = res[0][0];
+//					opt[0][0] = res[0][0];
+//					System.out.println("loglikeli:"+res[0][0]);
+//				}
+//				for(int i = 0; i<res[1].length; i++){
+//					System.out.println(res[1][i]);
+//				}
+//				predictions = new DoubleMatrix(0,1);
+//				learnStart = 0;
+//				for(int i = 0; i < numruns; i++){
+//					double predictStart = learnStart + learnSize;
+//					double[] xTrain = new double[learnSize];
+//					for(int o = 0; o < learnSize; o++){
+//						xTrain[o] = o*stepSize+learnStart*stepSize;
+//					}
+//					DoubleMatrix xTrainM = new DoubleMatrix(xTrain);
+//					double[] xTest = new double[predictSize];
+//					for(int o = 0; o < predictSize; o++){
+//						xTest[o] = o*stepSize + predictStart*stepSize;
+//					}
+//
+//					DoubleMatrix xTestM = new DoubleMatrix(xTest);
+//					DoubleMatrix parame = new DoubleMatrix(res[1]);
+//					gp = new GP(xTrainM, xTestM, parame, cf, gpVar);
+//					gp.setup(subVector(learnStart,learnStart+learnSize,priceData));
+//					predictions = DoubleMatrix.concatVertically(predictions, gp.getPredMean());
+//					learnStart = learnStart  + predictSize;
+//				}
+//
+//				double rmse = computeRMSE(predictions,subVector(learnSize, learnSize + predictSize*numruns, priceData));
+//
+//				if(rmse < currentRMSE){
+//					currentRMSE = rmse;
+//					bestVars = new DoubleMatrix(res[1]);
+//
+//				}
+//				System.out.println(r + " RMSE: " + currentRMSE + " " + rmse + " " + maxLoglikeli + " " +  res[0][0]);
+//
+//
+//
+//
+//
+//			} catch (Exception e) {
+//				e.printStackTrace();
+//				// TODO: handle exception
+//			}
+//
+//		}
+//		FileHandler.matrixToCsv(bestVars, "/home/user/caflisch/Masterarbeit/data/bestvars.csv");
 
 	}
 	public static double computeRMSE(DoubleMatrix a, DoubleMatrix b){

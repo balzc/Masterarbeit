@@ -105,8 +105,8 @@ public class FileHandler {
 		{		
 			FileWriter writer = new FileWriter(destination);
 			writer.append("Average Regret,");
-			writer.append("mq differences,");
-			writer.append("vmin differences,");
+			writer.append("mq,");
+			writer.append("vmin,");
 
 			writer.append('\n');
 		
