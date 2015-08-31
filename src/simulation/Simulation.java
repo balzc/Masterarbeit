@@ -103,9 +103,9 @@ public class Simulation {
 //		System.out.println(mqTrue + " " + vminTrue);
 		
 		// Stopping criterion parameters
-		int numberOfSamplesForStoppingCriterion = 100;
-		int numberOfConcurrentThreads = 10;
-		double stoppingCriterionThreshold = 0.5;
+		int numberOfSamplesForStoppingCriterion = 1000;
+		int numberOfConcurrentThreads = 20;
+		double stoppingCriterionThreshold = 0.1;
 		// general simulation parameters
 		int numberOfRuns = 365;
 		
@@ -417,9 +417,9 @@ public class Simulation {
 //					avg /= avgWindow;
 //				}
 					System.out.println( avgRegret + " " +vminLearned + " " + mqLearned +" "+ counter);
-//				if(avgRegret < stoppingCriterionThreshold){
-//					notLearning = true;
-//				}
+				if(avgRegret < stoppingCriterionThreshold){
+					notLearning = true;
+				}
 				regret.add(avgRegret);
 				mqDiffs.add(mqLearned);
 				vminDiffs.add(vminLearned);
@@ -623,7 +623,7 @@ public class Simulation {
 		String totalCosts = sum(costsDailyMDP)+ ","+ sum(costsDailyLPL)+","+ sum(costsDailyPAFL) +","+ sum(costsDailySML)+ ",";
 		String totalLoads = sum(loadsDailyMDP) + "," +sum(loadsDailyLPL) + "," +sum(loadsDailyPAFL) + "," +sum(loadsDailySML) + "," ;
 		String totalUtils = sum(totalUtilitiesMDP) + "," +sum(totalUtilitiesLPL) + "," +sum(totalUtilitiesPAFL) + "," +sum(totalUtilitiesSML) + ",";
-		String appendend = loadsMDP.size() + "," + regret.size() + "," + sum(regret)+ "," + sum(mqDiffs) + "," +sum(vminDiffs) + ",";
+		String appendend = loadsMDP.size() + "," + regret.size() + "," + sum(regret)+ ","+sum(vminDiffs) +  ","  +sum(mqDiffs) +  ",";
 		append += totalCosts +totalLoads + totalUtils + appendend + "\n";
 		if(append.split(",").length != 26){
 			try {
