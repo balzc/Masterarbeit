@@ -154,7 +154,6 @@ public class Simulation {
 		int numSteps = 96;
 
 		
-		LowPriceLoader LPL = new LowPriceLoader(mq, vmin, qminTrue, qmax);
 		PlugAndForgetLoader PAFL = new PlugAndForgetLoader(qmax);
 		ArrayList<Double> loadsMDP = new ArrayList<Double>();
 		ArrayList<Double> loadsLPL = new ArrayList<Double>();
@@ -430,6 +429,8 @@ public class Simulation {
 			if(PROFILING){
 				time = System.nanoTime();
 			}
+			// Initalise the low price loader
+			LowPriceLoader LPL = new LowPriceLoader(mqLearned, vminLearned, qmin, qmax);
 			// intialise the sorted min loader
 			SortedMinLoader sml = new SortedMinLoader();
 			sml.setup(Main.subVector(0, (int)(tdep + endOfDayOffset+1), predMeanPrices), qmax, currentLoadSML/kwhPerUnit);
