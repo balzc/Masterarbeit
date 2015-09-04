@@ -239,8 +239,8 @@ public class Simulation {
 					System.out.println(" too much");
 				}
 			}
+		
 			// update the learned mean departure time with new information
-			tdepMeans.add(tdep);
 			double tdepSum = 0;
 			for(Double d: tdepMeans){
 				tdepSum += d;
@@ -248,6 +248,10 @@ public class Simulation {
 			double tdepSampleMean = tdepSum/tdepMeans.size();
 			double tdepVar = tdepLearnedSD*tdepLearnedSD;
 			tdepLearnedMean = (tdepSampleMean*tdepVar/(tdepMeans.size()*tdepVar+tdepVar))+(tdepMeans.size()*tdepLearnedMean*tdepVar/(tdepMeans.size()*tdepVar+tdepVar));
+			if(counter == 0){
+				tdepLearnedMean = tdep;
+			}
+			tdepMeans.add(tdep);
 
 			// choose a Question at random and add the additional data
 			additionalLoadDataQ.add(q);
@@ -518,36 +522,41 @@ public class Simulation {
 				time = System.nanoTime();
 			}
 			// find out how much load was used during the day
-			double usedLoad = currentLoadMDP;
-			if(currentLoadMDP > 0){
-				double tempload = qmin*kwhPerUnit;
-				usedLoad = (int)sampleFromNormal(tempload, returnLoadSD);
-				int c = 0;
-				if(!(Math.abs(tempload-currentLoadMDP) < 0.001)){
-					while((usedLoad > currentLoadMDP || usedLoad < tempload)&&c<100){
-						usedLoad = (int)sampleFromNormal(tempload, returnLoadSD);
-						c++;
-						if(c == 100){
-							usedLoad = currentLoadMDP;
-						}
-					}
-				}
-				if(log)
-					System.out.println("used Load " + usedLoad);
-				currentLoadMDP = Math.max(currentLoadMDP - usedLoad,0);
-				if(log)
-					System.out.println("used Load " + usedLoad);
-			}
-			if(PROFILING){
-				System.out.println("return load sampling - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
-			}
-			if(PROFILING){
-				time = System.nanoTime();
-			}
-			currentLoadLPL = Math.max(0,currentLoadLPL - usedLoad);
-			currentLoadPAFL = Math.max(0,currentLoadPAFL - usedLoad);
-			currentLoadSML = Math.max(0,currentLoadSML - usedLoad);
+//			double usedLoad = currentLoadMDP;
+//			if(currentLoadMDP > 0){
+//				double tempload = qmin*kwhPerUnit;
+//				usedLoad = (int)sampleFromNormal(tempload, returnLoadSD);
+//				int c = 0;
+//				if(!(Math.abs(tempload-currentLoadMDP) < 0.001)){
+//					while((usedLoad > currentLoadMDP || usedLoad < tempload)&&c<100){
+//						usedLoad = (int)sampleFromNormal(tempload, returnLoadSD);
+//						c++;
+//						if(c == 100){
+//							usedLoad = currentLoadMDP;
+//						}
+//					}
+//				}
+//				if(log)
+//					System.out.println("used Load " + usedLoad);
+//				currentLoadMDP = Math.max(currentLoadMDP - usedLoad,0);
+//				if(log)
+//					System.out.println("used Load " + usedLoad);
+//			}
+//			if(PROFILING){
+//				System.out.println("return load sampling - Time exceeded: "+(System.nanoTime()-time)/Math.pow(10,9)+" s");
+//			}
+//			if(PROFILING){
+//				time = System.nanoTime();
+//			}
+//			currentLoadLPL = Math.max(0,currentLoadLPL - usedLoad);
+//			currentLoadPAFL = Math.max(0,currentLoadPAFL - usedLoad);
+//			currentLoadSML = Math.max(0,currentLoadSML - usedLoad);
 
+			currentLoadMDP = 0;
+			currentLoadLPL = 0;
+			currentLoadPAFL = 0;
+			currentLoadSML = 0;
+			
 			if(log){
 				System.out.println("returnload MDP: " + currentLoadMDP);
 				System.out.println("returnload LPL: " + currentLoadLPL);
