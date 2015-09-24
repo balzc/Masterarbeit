@@ -340,89 +340,80 @@ public class Simulation {
 			}
 			// Check stopping criterion
 			if(!notLearning){
-				int stoppingRunsCounter = 0;
-				double expectedUtility = mdp.getqValues()[0][mdp.priceToState(realPriceMatrix.get(0)+priceOffset)][mdp.loadToState(currentLoadMDP)][0];
-//				System.out.println("base " + expectedUtility);
-				double cumulatedDifference = 0;
-				double[][] covarianceMatrix = new double[2][2];
-//				Main.printMatrix(bi.getAInv());
-				covarianceMatrix[0] = new double[] {bi.getAInv().get(0,0),bi.getAInv().get(0,1)};
-				covarianceMatrix[1] = new double[] {bi.getAInv().get(1,0),bi.getAInv().get(1,1)};
-				MultivariateNormalDistribution mvnd = new MultivariateNormalDistribution(new double[] {bi.getMean().get(0),bi.getMean().get(1)},covarianceMatrix);
-//				Main.printMatrix(new DoubleMatrix(covarianceMatrix));
-//				Main.printMatrix(bi.getCovar());
-
-				for(int o = 0; o < numberOfSamplesForStoppingCriterion/numberOfConcurrentThreads; o++){
-//					if(log)
-//					if(o%10 == 0)
-//					System.out.println("stoppinval run: "+ o + " " + numberOfSamplesForStoppingCriterion/numberOfConcurrentThreads + "    " + runId);
-					SimulationThread[] sts = new SimulationThread[numberOfConcurrentThreads];
-					// start threads
-					for(int i = 0; i < numberOfConcurrentThreads; i++){
-						double[] sample = mvnd.sample();
-						double sampledVmin = -1;
-						double sampledMQ = -1;
-						int whilecounter = 0;
-						while(sampledVmin < 0 || sampledMQ < 0){
-							sample = mvnd.sample();
-							sampledVmin = sample[0] + qmin*kwhPerUnit * sample[1];
-							sampledMQ = sample[1];
-							whilecounter++;
-							if(whilecounter > 100){
-								System.out.println("TOo much");
-							}
-						}
-//						sampledMQ = 20;
-//						sampledVmin = 400;
-//						if(log)
-//							System.out.println(i +  " " + mqLearned + " " + vminLearned + " " + sampledVmin + " vmin mq " + sampledMQ + " eu " + expectedUtility + " sample 0 " + sample[0] + " sample 1 " + sample[1] + " bi 0 " + bi.getMean().get(0)+ " bi 1 " + bi.getMean().get(1));
-//						System.out.println(sampledVmin + " " + sampledMQ);
-						EVMDP samplemdp = new EVMDP(sampledMQ, sampledVmin, kwhPerUnit, mdp.getPriceProb(), mdp.getLoadProb(), mdp.getEndStateProb(), mdp.getPrices(), mdp.getLoads(), numSteps,(int)(tstart + endOfDayOffset),(int)( tcrit + endOfDayOffset),(int)(tdepLearnedMean  + endOfDayOffset), qmin, qmax,deltaPrice);
-
-
-						int[] indexes = new int[2];
-						indexes[0] = mdp.priceToState(realPriceMatrix.get(0)+priceOffset);
-						indexes[1] = mdp.loadToState(currentLoadMDP);
-						double sampleTdep = sampleFromNormal(tdepTrueMean, tdepTrueSD);
-
-						SimulationThread thread = new SimulationThread(samplemdp,stoppingRunsCounter,mdp.getOptPolicy(),tdepLearnedMean+endOfDayOffset,predMeanPrices,currentLoadMDP);
-						thread.start();
-						sts[i] = thread;
-
-					}
-					
-					// collect threads and sum cumulateddifferences
-					for(int i = 0; i < numberOfConcurrentThreads; i++){
-						SimulationThread b = sts[i];
-						try {
-							b.thread.join();
-//							if(log)
-//							System.out.println("cd " + cumulatedDifference);
-							cumulatedDifference += b.value;
-
-						} catch (InterruptedException e) {
-							// TODO Auto-generated catch block
-							System.out.println(e.getMessage());
-							e.printStackTrace();
-						}
-
-					}
-				}
-				double avgRegret = cumulatedDifference/numberOfSamplesForStoppingCriterion;
-//				if(log)
-//				System.out.println(vminLearned + " " + mqLearned);
-//				int avgWindow = 10;
-//				double avg = 0;
-//				if(counter >= avgWindow){
-//					for(int i = regret.size()-avgWindow; i < regret.size(); i++){
-//						avg += regret.get(i);
+//				int stoppingRunsCounter = 0;
+//				double expectedUtility = mdp.getqValues()[0][mdp.priceToState(realPriceMatrix.get(0)+priceOffset)][mdp.loadToState(currentLoadMDP)][0];
+////				System.out.println("base " + expectedUtility);
+//				double cumulatedDifference = 0;
+//				double[][] covarianceMatrix = new double[2][2];
+////				Main.printMatrix(bi.getAInv());
+//				covarianceMatrix[0] = new double[] {bi.getAInv().get(0,0),bi.getAInv().get(0,1)};
+//				covarianceMatrix[1] = new double[] {bi.getAInv().get(1,0),bi.getAInv().get(1,1)};
+//				MultivariateNormalDistribution mvnd = new MultivariateNormalDistribution(new double[] {bi.getMean().get(0),bi.getMean().get(1)},covarianceMatrix);
+////				Main.printMatrix(new DoubleMatrix(covarianceMatrix));
+////				Main.printMatrix(bi.getCovar());
+//
+//				for(int o = 0; o < numberOfSamplesForStoppingCriterion/numberOfConcurrentThreads; o++){
+////					if(log)
+////					if(o%10 == 0)
+////					System.out.println("stoppinval run: "+ o + " " + numberOfSamplesForStoppingCriterion/numberOfConcurrentThreads + "    " + runId);
+//					SimulationThread[] sts = new SimulationThread[numberOfConcurrentThreads];
+//					// start threads
+//					for(int i = 0; i < numberOfConcurrentThreads; i++){
+//						double[] sample = mvnd.sample();
+//						double sampledVmin = -1;
+//						double sampledMQ = -1;
+//						int whilecounter = 0;
+//						while(sampledVmin < 0 || sampledMQ < 0){
+//							sample = mvnd.sample();
+//							sampledVmin = sample[0] + qmin*kwhPerUnit * sample[1];
+//							sampledMQ = sample[1];
+//							whilecounter++;
+//							if(whilecounter > 100){
+//								System.out.println("TOo much");
+//							}
+//						}
+////						sampledMQ = 20;
+////						sampledVmin = 400;
+////						if(log)
+////							System.out.println(i +  " " + mqLearned + " " + vminLearned + " " + sampledVmin + " vmin mq " + sampledMQ + " eu " + expectedUtility + " sample 0 " + sample[0] + " sample 1 " + sample[1] + " bi 0 " + bi.getMean().get(0)+ " bi 1 " + bi.getMean().get(1));
+////						System.out.println(sampledVmin + " " + sampledMQ);
+//						EVMDP samplemdp = new EVMDP(sampledMQ, sampledVmin, kwhPerUnit, mdp.getPriceProb(), mdp.getLoadProb(), mdp.getEndStateProb(), mdp.getPrices(), mdp.getLoads(), numSteps,(int)(tstart + endOfDayOffset),(int)( tcrit + endOfDayOffset),(int)(tdepLearnedMean  + endOfDayOffset), qmin, qmax,deltaPrice);
+//
+//
+//						int[] indexes = new int[2];
+//						indexes[0] = mdp.priceToState(realPriceMatrix.get(0)+priceOffset);
+//						indexes[1] = mdp.loadToState(currentLoadMDP);
+//						double sampleTdep = sampleFromNormal(tdepTrueMean, tdepTrueSD);
+//
+//						SimulationThread thread = new SimulationThread(samplemdp,stoppingRunsCounter,mdp.getOptPolicy(),tdepLearnedMean+endOfDayOffset,predMeanPrices,currentLoadMDP);
+//						thread.start();
+//						sts[i] = thread;
+//
 //					}
-//					avg /= avgWindow;
+//					
+//					// collect threads and sum cumulateddifferences
+//					for(int i = 0; i < numberOfConcurrentThreads; i++){
+//						SimulationThread b = sts[i];
+//						try {
+//							b.thread.join();
+////							if(log)
+////							System.out.println("cd " + cumulatedDifference);
+//							cumulatedDifference += b.value;
+//
+//						} catch (InterruptedException e) {
+//							// TODO Auto-generated catch block
+//							System.out.println(e.getMessage());
+//							e.printStackTrace();
+//						}
+//
+//					}
 //				}
-					System.out.println( avgRegret + " " +vminLearned + " " + mqLearned +" "+ counter);
-				if(avgRegret < stoppingCriterionThreshold){
-					notLearning = true;
-				}
+				double avgRegret = 1;//cumulatedDifference/numberOfSamplesForStoppingCriterion;
+//
+//					System.out.println( avgRegret + " " +vminLearned + " " + mqLearned +" "+ counter);
+//				if(avgRegret < stoppingCriterionThreshold){
+//					notLearning = true;
+//				}
 				regret.add(avgRegret);
 				mqDiffs.add(mqLearned);
 				vminDiffs.add(vminLearned);

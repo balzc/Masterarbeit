@@ -40,7 +40,7 @@ public class Main {
 		//		runLpSolver();
 		//		testEVMDP("/users/balz/documents/workspace/masterarbeit/data/prices2.csv", "/users/balz/documents/workspace/masterarbeit/data/out.csv");
 //				testBayes();
-		//		peakStatistics();
+//				peakStatistics();
 	}
 
 
@@ -58,28 +58,31 @@ public class Main {
 	}
 
 	public static void peakStatistics(){
-		String indexesString = "/users/balz/documents/workspace/masterarbeit/data/peakIndexes.csv";
-		String noPeakString = "/users/balz/documents/workspace/masterarbeit/data/peaksNoPeaks/normalPrices/";
-		String normalString = "/users/balz/documents/workspace/masterarbeit/data/peaksNoPeaks/noPeakPrices/";
+		String indexesString = "/users/balz/documents/workspace/data/peakIndexes.csv";
+		String noPeakString = "/users/balz/dropbox/studium/masterarbeit/results/nopeak/";
+		String normalString = "/users/balz/dropbox/studium/masterarbeit/results/normal/";
 		String timestep = "/timestep.csv";
 		File[] files = new File(normalString).listFiles();
 		int noPeakCounter = 0;
 		int normalCounter = 0;
+		int offset = 17748;
 		DoubleMatrix indexes = FileHandler.csvToMatrix(indexesString);
-
+		int counter = 0;
 		for (File file : files) {
 			if (file.isDirectory()) {
-				System.out.println("Directory: " + file.getName());
+				System.out.println(counter);
+				counter++;
 				DoubleMatrix noPeak = FileHandler.csvToMatrix(noPeakString+file.getName()+timestep);
 				DoubleMatrix normal = FileHandler.csvToMatrix(normalString+file.getName()+timestep);
-				for(int i = 0; i < noPeak.rows; i++){
+				for(int i = 0; i < noPeak.rows; i++){ //
 					noPeakCounter += noPeak.get(i,0)*indexes.get((int)noPeak.get(i,14),0);
 				}
-				for(int i = 0; i < normal.rows; i++){
+				for(int i = 0; i < normal.rows; i++){ // 
 					normalCounter += normal.get(i,0)*indexes.get((int)normal.get(i,14),0);
 				}
 			} else {
 			}
+			
 		}
 
 
@@ -460,7 +463,7 @@ public class Main {
 		// {1.0368523093853659,5.9031209989290048,1.0368523093853659,.3466674176616187,3.5551018122094575,8.1097474657929007} 6.990613491143922
 		//{4.198361329912527,9.879118239158018,7.237931221041399,0.7859433255018939,9.056729524350933,0.5142911142105695}5.770412292775187
 		// {2.616588288484559,8.58815296462537,7.918211943572866,0.7131848981125929,6.162092449198834,0.3435202245377685}
-		double[] priceParameters ={1.0368523093853659,5.9031209989290048,1.0368523093853659,.3466674176616187,3.5551018122094575,8.1097474657929007} ;//{SE1,SE2,P1,OU1,OU2}1.0368523093853659, 5.9031209989290048, .3466674176616187, 3.5551018122094575, 8.1097474657929007, .49489818206999125, 0.049489818206999125};
+		double[] priceParameters ={2.616588288484559,8.58815296462537,7.918211943572866,0.7131848981125929,6.162092449198834,0.3435202245377685} ;//{SE1,SE2,P1,OU1,OU2}{1.0368523093853659, 5.9031209989290048, .3466674176616187, 3.5551018122094575, 8.1097474657929007, .49489818206999125, 0.049489818206999125};
 		SquaredExponential c1 = new SquaredExponential();
 		Periodic c2 = new Periodic();
 		OrnsteinUhlenbeck m = new OrnsteinUhlenbeck();

@@ -146,6 +146,7 @@ public class FileHandler {
 				cellCounter = splitLine.length;
 			}
 			result = new DoubleMatrix(lineCounter, cellCounter);
+
 			for(int sray = 0; sray < res.size(); sray++){
 				for(int s = 0;s < res.get(sray).length; s++){
 					if(res.get(sray)[s].matches("-?\\d+(\\.\\d+)?")){
